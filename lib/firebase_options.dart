@@ -26,11 +26,11 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyDBtuldxMwJY_qlgB2BGloTdbXKGnkAGEY',
-    appId: '1:86017487874:android:834b7e63e5c2c457e9a31b',
-    messagingSenderId: '86017487874',
-    projectId: 'medicare-ai-74f87',
-    storageBucket: 'medicare-ai-74f87.firebasestorage.app',
+    apiKey: 'REPLACE_ME',
+    appId: '1:000000000000:android:replace_me',
+    messagingSenderId: '000000000000',
+    projectId: 'replace-me',
+    storageBucket: 'replace-me.appspot.com',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(

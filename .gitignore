@@ -46,3 +46,4 @@ app.*.map.json
 
 # Local API keys (never commit)
 env.local.json
+android/app/google-services.json
