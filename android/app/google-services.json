@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "86017487874",
+    "project_id": "medicare-ai-74f87",
+    "storage_bucket": "medicare-ai-74f87.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:86017487874:android:834b7e63e5c2c457e9a31b",
+        "android_client_info": {
+          "package_name": "com.beyond.medicare"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDBtuldxMwJY_qlgB2BGloTdbXKGnkAGEY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

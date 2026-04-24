@@ -1,4 +1,4 @@
-package com.example.medicare_ai
+package com.beyond.medicare
 
 import io.flutter.embedding.android.FlutterActivity
 

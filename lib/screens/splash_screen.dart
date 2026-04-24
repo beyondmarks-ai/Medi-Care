@@ -11,7 +11,7 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
-  late VideoPlayerController _controller;
+  VideoPlayerController? _controller;
   bool _navigated = false;
   bool _isVideoReady = false;
 
@@ -22,57 +22,56 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _playVideoIntro() async {
-    // 5-minute timeout logic for emergencies
     try {
       final prefs = await SharedPreferences.getInstance();
       final lastPlayedMs = prefs.getInt('last_intro_playback') ?? 0;
       final nowMs = DateTime.now().millisecondsSinceEpoch;
-      
-      // If less than 5 minutes have passed since last intro, skip directly to app
+
       if (nowMs - lastPlayedMs < const Duration(minutes: 5).inMilliseconds) {
-         _navigateToLogin();
-         return;
+        _navigateToLogin();
+        return;
       }
-      
-      // Store the current timestamp as the new playback milestone
+
       await prefs.setInt('last_intro_playback', nowMs);
-    } catch (_) { 
-      // If preferences fail, proceed to load the video as a fallback
-    }
+    } catch (_) {}
 
     _controller = VideoPlayerController.asset('assets/intro.mp4');
-    
+
     try {
-      await _controller.initialize();
-      
+      await _controller!.initialize();
+
+      if (!mounted) return;
       setState(() {
         _isVideoReady = true;
       });
-      await _controller.play();
+      await _controller!.play();
 
-      // Listen for when video finishes 
-      _controller.addListener(() {
-        if (_controller.value.position >= _controller.value.duration && _controller.value.duration.inMilliseconds > 0) {
-          _navigateToLogin();
-        }
-      });
+      _controller!.addListener(_onVideoTick);
 
-      // Failsafe: if video is extremely long, transition after 4 seconds of playback
-      Future.delayed(const Duration(seconds: 5), () {
-        _navigateToLogin();
-      });
-
+      Future.delayed(const Duration(seconds: 5), _navigateToLogin);
     } catch (e) {
-      // If video fails to load, immediately jump to login
-      _navigateToLogin(); 
+      await _controller?.dispose();
+      _controller = null;
+      _navigateToLogin();
+    }
+  }
+
+  void _onVideoTick() {
+    final c = _controller;
+    if (c == null || !c.value.isInitialized) return;
+    final d = c.value.duration;
+    if (d.inMilliseconds > 0 && c.value.position >= d) {
+      c.removeListener(_onVideoTick);
+      _navigateToLogin();
     }
   }
 
   void _navigateToLogin() {
     if (_navigated || !mounted) return;
     _navigated = true;
-    
-    // Smooth fade transition into the main app
+    _controller?.removeListener(_onVideoTick);
+    _controller?.pause();
+
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
         pageBuilder: (context, animation, secondaryAnimation) => const LoginScreen(),
@@ -86,30 +85,33 @@ class _SplashScreenState extends State<SplashScreen> {
 
   @override
   void dispose() {
-    _controller.dispose();
+    _controller?.removeListener(_onVideoTick);
+    _controller?.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white, // Clean white background as requested
+      backgroundColor: Colors.white,
       body: Center(
-        child: _isVideoReady
+        child: _isVideoReady && _controller != null
             ? SizedBox(
-                width: 250, // Make the video smaller like a central animated logo
+                width: 250,
                 child: ClipRect(
                   child: Align(
                     alignment: Alignment.topCenter,
-                    heightFactor: 0.85, // Accurately slices off the bottom 15% (footer/watermark)
+                    heightFactor: 0.85,
                     child: AspectRatio(
-                      aspectRatio: _controller.value.aspectRatio,
-                      child: VideoPlayer(_controller),
+                      aspectRatio: _controller!.value.aspectRatio,
+                      child: VideoPlayer(_controller!),
                     ),
                   ),
                 ),
               )
-            : const CircularProgressIndicator(color: Color(0xFF916CF2)),
+            : CircularProgressIndicator(
+                color: Theme.of(context).colorScheme.primary,
+              ),
       ),
     );
   }

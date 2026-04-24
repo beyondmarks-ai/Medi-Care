@@ -5,10 +5,7 @@
 // gestures. You can also use WidgetTester to find child widgets in the widget
 // tree, read text, and verify that the values of widget properties are correct.
 
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-
-import 'package:medicare_ai/main.dart';
 
 void main() {
   testWidgets('Dummy test to ensure CI passes', (WidgetTester tester) async {

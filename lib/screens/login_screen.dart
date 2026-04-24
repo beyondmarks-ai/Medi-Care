@@ -1,6 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:medicare_ai/screens/dashboard_screen.dart';
+import 'package:medicare_ai/screens/doctor_dashboard_screen.dart';
 import 'package:medicare_ai/screens/signup_screen.dart';
-import 'package:medicare_ai/services/emergency_service.dart';
+import 'package:medicare_ai/services/care_assignment_service.dart';
+import 'package:medicare_ai/services/firebase_auth_service.dart';
+import 'package:medicare_ai/services/firebase_profile_service.dart';
+import 'package:medicare_ai/theme/portal_extension.dart';
+import 'package:medicare_ai/widgets/emergency_dock.dart';
+import 'package:medicare_ai/widgets/theme_mode_toggle.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -10,21 +17,102 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+
+  void _openDashboardPatient() {
+    Navigator.of(context).pushReplacement(
+      PageRouteBuilder(
+        pageBuilder: (context, a, s) => const DashboardScreen(),
+        transitionsBuilder: (context, animation, s, child) {
+          return FadeTransition(opacity: animation, child: child);
+        },
+        transitionDuration: const Duration(milliseconds: 500),
+      ),
+    );
+  }
+
+  Future<void> _signIn() async {
+    try {
+      final email = _emailController.text.trim();
+      final password = _passwordController.text.trim();
+      final credential = await FirebaseAuthService.instance.signIn(
+        email: email,
+        password: password,
+      );
+      final uid = credential.user?.uid;
+      if (uid == null || !mounted) return;
+      final profile = await FirebaseProfileService.instance.getProfile(uid);
+      final role = (profile?['role'] as String?) ?? 'patient';
+      final uniqueId = (profile?['uniqueId'] as String?) ?? '';
+      if (role == 'doctor') {
+        CareAssignmentService.instance.upsertDoctorProfile(
+          doctorId: uniqueId,
+          uid: uid,
+          name: (profile?['name'] as String?) ?? '',
+          specialization: (profile?['specialization'] as String?) ?? '',
+        );
+        CareAssignmentService.instance.setActiveDoctor(uniqueId);
+        await CareAssignmentService.instance.hydrateDoctorPatients(uid);
+        if (!mounted) return;
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute<void>(
+            builder: (_) => DoctorDashboardScreen(
+              doctorId: uniqueId,
+              doctorName: profile?['name'] as String?,
+            ),
+          ),
+        );
+      } else {
+        CareAssignmentService.instance.setActivePatient(uniqueId);
+        await CareAssignmentService.instance.hydratePatientAssignment(uid);
+        if (!mounted) return;
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute<void>(
+            builder: (_) => DashboardScreen(
+              patientId: uniqueId,
+              assignedDoctor: profile?['assignedDoctorName'] as String?,
+              assignedDoctorId: profile?['assignedDoctorId'] as String?,
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Sign in failed: $e')),
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
+    final cs = context.medicareColorScheme;
+    final px = context.portalX;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F6FA), // Light grey background inspired by image
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: Stack(
           children: [
-            // Main content
             Positioned.fill(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.only(left: 24.0, right: 24.0, top: 40.0, bottom: 120.0),
+                padding: const EdgeInsets.only(
+                  left: 24.0,
+                  right: 24.0,
+                  top: 40.0,
+                  bottom: 120.0,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Top Bar (Avatar + Icons like in image)
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -33,16 +121,21 @@ class _LoginScreenState extends State<LoginScreen> {
                             Container(
                               height: 48,
                               width: 48,
-                              padding: const EdgeInsets.all(4), // Little padding for the logo
-                              decoration: const BoxDecoration(
+                              padding: const EdgeInsets.all(4),
+                              decoration: BoxDecoration(
                                 shape: BoxShape.circle,
-                                color: Colors.white, // Changed background to white to pop
-                                boxShadow: [BoxShadow(color: Color(0x11000000), blurRadius: 10)]
+                                color: cs.surface,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: cs.shadow.withValues(alpha: 0.08),
+                                    blurRadius: 10,
+                                  )
+                                ],
                               ),
                               child: Image.asset('assets/logo.png', fit: BoxFit.contain),
                             ),
                             const SizedBox(width: 12),
-                            const Column(
+                            Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
@@ -50,90 +143,117 @@ class _LoginScreenState extends State<LoginScreen> {
                                   style: TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.w700,
-                                    color: Color(0xFF1E1E1E),
+                                    color: cs.onSurface,
                                   ),
                                 ),
                                 Text(
                                   'Health Portal',
                                   style: TextStyle(
                                     fontSize: 12,
-                                    color: Colors.grey,
+                                    color: cs.onSurfaceVariant,
                                   ),
                                 ),
                               ],
                             ),
                           ],
                         ),
-                        // Circular buttons like the image's search & bell
                         Row(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            _buildCircularIconButton(Icons.help_outline),
-                            const SizedBox(width: 12),
-                            _buildCircularIconButton(Icons.notifications_outlined),
+                            TextButton(
+                              onPressed: _openDashboardPatient,
+                              style: TextButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 6, vertical: 8),
+                                minimumSize: Size.zero,
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              ),
+                              child: Text(
+                                'Skip',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: cs.primary,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            const ThemeModeToggle(size: 0.95),
+                            const SizedBox(width: 4),
+                            _buildCircularIconButton(
+                                context, Icons.help_outline),
+                            const SizedBox(width: 10),
+                            _buildCircularIconButton(
+                                context, Icons.notifications_outlined),
                           ],
                         )
                       ],
                     ),
                     const SizedBox(height: 40),
-                    
-                    // Welcome Title
-                    const Text(
+                    Text(
                       'Welcome Back',
                       style: TextStyle(
                         fontSize: 32,
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFF1E1E1E),
+                        color: cs.onSurface,
                         letterSpacing: -0.5,
                       ),
                     ),
                     const SizedBox(height: 8),
-                    const Text(
+                    Text(
                       'Sign in to access your medical records and connect in an emergency.',
                       style: TextStyle(
                         fontSize: 15,
-                        color: Color(0xFF757575),
+                        color: cs.onSurfaceVariant,
                         height: 1.4,
                       ),
                     ),
                     const SizedBox(height: 40),
-
-                    // Inputs matching the Actions container style
-                    _buildInputField('Email Address', Icons.email_outlined, false),
+                    _buildInputField(
+                      context,
+                      'Email Address',
+                      Icons.email_outlined,
+                      false,
+                      controller: _emailController,
+                    ),
                     const SizedBox(height: 20),
-                    _buildInputField('Password', Icons.lock_outline, true),
-                    
+                    _buildInputField(
+                      context,
+                      'Password',
+                      Icons.lock_outline,
+                      true,
+                      controller: _passwordController,
+                    ),
                     const SizedBox(height: 16),
                     Align(
                       alignment: Alignment.centerRight,
                       child: TextButton(
                         onPressed: () {},
-                        child: const Text(
+                        child: Text(
                           'Forgot Password?',
                           style: TextStyle(
-                            color: Color(0xFF916CF2),
+                            color: cs.primary,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
                       ),
                     ),
                     const SizedBox(height: 20),
-
-                    // Beautiful login button inspired by the big purple card
                     GestureDetector(
-                      onTap: () {},
+                      onTap: _signIn,
                       child: Container(
                         width: double.infinity,
                         height: 72,
                         decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [Color(0xFFC7A7FF), Color(0xFF916CF2)],
+                          gradient: LinearGradient(
+                            colors: [px.ctaStart, px.ctaEnd],
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                           ),
                           borderRadius: BorderRadius.circular(24),
                           boxShadow: [
                             BoxShadow(
-                              color: const Color(0xFF916CF2).withValues(alpha: 0.3),
+                              color: cs.primary.withValues(alpha: 0.28),
                               blurRadius: 20,
                               offset: const Offset(0, 8),
                             )
@@ -151,17 +271,14 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ),
                     ),
-                    
                     const SizedBox(height: 32),
-                    
-                    // Sign Up Link
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Text(
+                        Text(
                           "Don't have an account?",
                           style: TextStyle(
-                            color: Color(0xFF757575),
+                            color: cs.onSurfaceVariant,
                             fontSize: 15,
                           ),
                         ),
@@ -169,13 +286,15 @@ class _LoginScreenState extends State<LoginScreen> {
                           onPressed: () {
                             Navigator.push(
                               context,
-                              MaterialPageRoute(builder: (context) => const SignupScreen()),
+                              MaterialPageRoute(
+                                builder: (context) => const SignupScreen(),
+                              ),
                             );
                           },
-                          child: const Text(
+                          child: Text(
                             'Sign Up',
                             style: TextStyle(
-                              color: Color(0xFF916CF2),
+                              color: cs.primary,
                               fontWeight: FontWeight.bold,
                               fontSize: 15,
                             ),
@@ -183,18 +302,16 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ],
                     ),
-
                     const SizedBox(height: 16),
-                    
-                    // Profile Setup / Status inspired section
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 20, vertical: 20),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: cs.surface,
                         borderRadius: BorderRadius.circular(24),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.02),
+                            color: px.subtleCardShadow,
                             blurRadius: 10,
                             offset: const Offset(0, 4),
                           )
@@ -203,7 +320,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Column(
+                          Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
@@ -211,15 +328,15 @@ class _LoginScreenState extends State<LoginScreen> {
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 15,
-                                  color: Color(0xFF1E1E1E),
+                                  color: cs.onSurface,
                                 ),
                               ),
-                              SizedBox(height: 4),
+                              const SizedBox(height: 4),
                               Text(
                                 'End-to-end encrypted login',
                                 style: TextStyle(
                                   fontSize: 13,
-                                  color: Colors.grey,
+                                  color: cs.onSurfaceVariant,
                                 ),
                               ),
                             ],
@@ -227,104 +344,26 @@ class _LoginScreenState extends State<LoginScreen> {
                           Container(
                             padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFF2F8EE), // faint green
+                              color: px.verifiedBackground,
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            child: const Icon(Icons.verified_user_rounded, color: Color(0xFF58B95E)),
+                            child: const Icon(
+                              Icons.verified_user_rounded,
+                              color: Color(0xFF58B95E),
+                            ),
                           ),
                         ],
                       ),
                     ),
-                    
                   ],
                 ),
               ),
             ),
-            
-            // Bottom floating dock (from the image) 
-            // Gives the "professional and emergency" vibe
-            Positioned(
+            const Positioned(
               bottom: 24,
               left: 24,
               right: 24,
-              child: Container(
-                height: 76,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF2B1B4A), // Very dark purple
-                  borderRadius: BorderRadius.circular(38),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF2B1B4A).withValues(alpha: 0.4),
-                      blurRadius: 20,
-                      offset: const Offset(0, 10),
-                    )
-                  ],
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      // Emergency SOS Action (Like the + Create button in image)
-                      GestureDetector(
-                        onTap: () => _showSOSModal(context),
-                        child: Container(
-                          height: 52,
-                          padding: const EdgeInsets.symmetric(horizontal: 20),
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [Color(0xFFFF8B8B), Color(0xFFFF4949)],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                            borderRadius: BorderRadius.circular(26),
-                            boxShadow: [
-                              BoxShadow(
-                                color: const Color(0xFFFF4949).withValues(alpha: 0.4),
-                                blurRadius: 10,
-                                offset: const Offset(0, 4),
-                              )
-                            ]
-                          ),
-                          child: const Row(
-                            children: [
-                              Icon(Icons.medical_services_rounded, color: Colors.white, size: 22),
-                              SizedBox(width: 8),
-                              Text(
-                                'SOS Connect',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 15,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      
-                      // Secondary bottom actions like in the image
-                      Row(
-                        children: [
-                          _buildDarkDockIcon(Icons.call_rounded, () {
-                            _showEmergencyContactsModal(context);
-                          }),
-                          const SizedBox(width: 8),
-                          _buildDarkDockIcon(Icons.location_on_rounded, () {
-                            EmergencyService.sendLiveLocation(context);
-                          }),
-                          const SizedBox(width: 8),
-                          _buildDarkDockIcon(Icons.support_agent_rounded, () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Opening 24/7 Medical Support Chat...'), backgroundColor: Color(0xFF2B1B4A)),
-                            );
-                          }),
-                        ],
-                      )
-                    ],
-                  ),
-                ),
-              ),
+              child: EmergencyDock(),
             ),
           ],
         ),
@@ -332,207 +371,68 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Widget _buildCircularIconButton(IconData icon) {
+  Widget _buildCircularIconButton(BuildContext context, IconData icon) {
+    final cs = context.medicareColorScheme;
     return Container(
       height: 48,
       width: 48,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: cs.surface,
         shape: BoxShape.circle,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
+            color: cs.shadow.withValues(alpha: 0.06),
             blurRadius: 10,
             offset: const Offset(0, 4),
           )
         ],
       ),
-      child: Icon(icon, color: const Color(0xFF1E1E1E), size: 22),
+      child: Icon(icon, color: cs.onSurface, size: 22),
     );
   }
 
-  Widget _buildDarkDockIcon(IconData icon, VoidCallback onTap) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        color: Colors.transparent,
-        child: Icon(icon, color: Colors.white.withValues(alpha: 0.8), size: 26),
-      ),
-    );
-  }
-
-  Widget _buildInputField(String hint, IconData icon, bool isPassword) {
+  Widget _buildInputField(
+    BuildContext context,
+    String hint,
+    IconData icon,
+    bool isPassword, {
+    TextEditingController? controller,
+  }) {
+    final cs = context.medicareColorScheme;
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: cs.surface,
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
+            color: cs.shadow.withValues(alpha: 0.05),
             blurRadius: 15,
             offset: const Offset(0, 6),
           )
         ],
       ),
       child: TextField(
+        controller: controller,
         obscureText: isPassword,
-        style: const TextStyle(fontWeight: FontWeight.w500),
+        style: TextStyle(
+            fontWeight: FontWeight.w500, color: cs.onSurface),
         decoration: InputDecoration(
           hintText: hint,
-          hintStyle: const TextStyle(color: Color(0xFFBDBDBD), fontWeight: FontWeight.w400),
+          hintStyle: TextStyle(
+            color: cs.onSurfaceVariant.withValues(alpha: 0.6),
+            fontWeight: FontWeight.w400,
+          ),
           prefixIcon: Padding(
             padding: const EdgeInsets.only(left: 20, right: 16),
-            child: Icon(icon, color: const Color(0xFF916CF2), size: 22),
+            child: Icon(icon, color: cs.primary, size: 22),
           ),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(24),
             borderSide: BorderSide.none,
           ),
           filled: true,
-          fillColor: Colors.white,
+          fillColor: cs.surface,
           contentPadding: const EdgeInsets.symmetric(vertical: 24),
-        ),
-      ),
-    );
-  }
-
-  void _showEmergencyContactsModal(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (context) => Container(
-        margin: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(32),
-          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 40, spreadRadius: 10)]
-        ),
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Container(height: 5, width: 44, decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(10))),
-            const SizedBox(height: 24),
-            const Text('Call Emergency Contact', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF1E1E1E))),
-            const SizedBox(height: 8),
-            const Text('Select a trusted contact from your network to ring immediately.', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey, fontSize: 14)),
-            const SizedBox(height: 24),
-            
-            _buildContactOptionCard(context, 'Mother', '+91 98765 43210'),
-            const SizedBox(height: 12),
-            _buildContactOptionCard(context, 'Husband', '+91 87654 32109'),
-            const SizedBox(height: 12),
-            _buildContactOptionCard(context, 'Brother', '+91 76543 21098'),
-            const SizedBox(height: 16),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildContactOptionCard(BuildContext context, String relation, String phone) {
-    return GestureDetector(
-      onTap: () {
-        Navigator.pop(context);
-        // Call the real dialer
-        EmergencyService.dialNumber(context, phone);
-      },
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-            color: const Color(0xFFF5F6FA),
-            borderRadius: BorderRadius.circular(20),
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
-              child: const Icon(Icons.person, color: Color(0xFF916CF2), size: 24),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(relation, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF1E1E1E))),
-                  const SizedBox(height: 4),
-                  Text(phone, style: const TextStyle(color: Colors.grey, fontSize: 13, height: 1.3)),
-                ],
-              ),
-            ),
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: const Color(0xFF58B95E).withValues(alpha: 0.1),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.call, color: Color(0xFF58B95E), size: 20)
-            )
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showSOSModal(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (context) => Container(
-        margin: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(32),
-          boxShadow: [BoxShadow(color: const Color(0xFFFF4949).withValues(alpha: 0.2), blurRadius: 40, spreadRadius: 10)]
-        ),
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: const BoxDecoration(color: Color(0xFFFFECEC), shape: BoxShape.circle),
-              child: const Icon(Icons.emergency_outlined, color: Color(0xFFFF4949), size: 40),
-            ),
-            const SizedBox(height: 24),
-            const Text('Ambulance SOS', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF1E1E1E))),
-            const SizedBox(height: 8),
-            const Text(
-              'You are about to contact the nearest ambulance dispatch and hospital emergency unit.',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey, fontSize: 14, height: 1.4),
-            ),
-            const SizedBox(height: 32),
-            GestureDetector(
-              onTap: () {
-                Navigator.pop(context);
-                // Directly call the primary medical emergency number in India
-                EmergencyService.dialNumber(context, '108');
-              },
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 20),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(colors: [Color(0xFFFF8B8B), Color(0xFFFF4949)]),
-                  borderRadius: BorderRadius.circular(24),
-                  boxShadow: [BoxShadow(color: const Color(0xFFFF4949).withValues(alpha: 0.4), blurRadius: 15, offset: const Offset(0, 6))]
-                ),
-                child: const Center(
-                  child: Text('Dial Ambulance Now', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel Alarm', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w600, fontSize: 15)),
-            )
-          ],
         ),
       ),
     );
