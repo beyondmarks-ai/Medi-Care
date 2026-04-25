@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:medicare_ai/screens/live_call_screen.dart';
 import 'package:medicare_ai/screens/login_screen.dart';
 import 'package:medicare_ai/screens/medical_ai_chat_screen.dart';
 import 'package:medicare_ai/services/care_assignment_service.dart';
+import 'package:medicare_ai/services/firebase_auth_service.dart';
 import 'package:medicare_ai/services/livekit_call_service.dart';
 import 'package:medicare_ai/theme/portal_extension.dart';
 import 'package:medicare_ai/widgets/emergency_dock.dart';
+import 'package:medicare_ai/widgets/incoming_call_listener.dart';
 import 'package:medicare_ai/widgets/theme_mode_toggle.dart';
 
 const _success = Color(0xFF58B95E);
@@ -26,7 +29,10 @@ class DashboardScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return IncomingCallListener(
+      currentRole: 'patient',
+      participantName: patientId == null ? 'Patient' : 'Patient $patientId',
+      child: Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: Stack(
@@ -101,7 +107,7 @@ class DashboardScreen extends StatelessWidget {
           ],
         ),
       ),
-    );
+    ));
   }
 
   static List<Widget> _quickActionCards(BuildContext context) {
@@ -236,26 +242,17 @@ class DashboardScreen extends StatelessWidget {
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (context) => const LoginScreen(),
-                    ),
-                  );
-                },
-                style: TextButton.styleFrom(
-                  foregroundColor: cs.primary,
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                ),
-                child: const Text(
-                  'Sign in',
-                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
-                ),
-              ),
-              const SizedBox(width: 2),
               const ThemeModeIconButton(),
-              const SizedBox(width: 2),
+              const SizedBox(width: 8),
+              _circleIconButton(context, Icons.logout_rounded, () async {
+                await FirebaseAuthService.instance.signOut();
+                if (!context.mounted) return;
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute<void>(builder: (_) => const LoginScreen()),
+                  (route) => false,
+                );
+              }),
+              const SizedBox(width: 8),
               _circleIconButton(context, Icons.help_outline, () => _comingSoon(context)),
               const SizedBox(width: 8),
               _circleIconButton(context, Icons.notifications_outlined, () {
@@ -486,6 +483,22 @@ class DashboardScreen extends StatelessWidget {
                     icon: const Icon(Icons.call_rounded),
                     label: const Text('Call assigned doctor in app'),
                   ),
+                  const SizedBox(height: 8),
+                  Tooltip(
+                    message:
+                        'Verifies the cloud token endpoint; does not start a call or notify anyone.',
+                    child: OutlinedButton.icon(
+                      onPressed: () => _testCallBackend(context),
+                      icon: const Icon(Icons.health_and_safety_rounded),
+                      label: const Text('Test LiveKit token (API only)'),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  OutlinedButton.icon(
+                    onPressed: () => _chooseDoctorFromDashboard(context),
+                    icon: const Icon(Icons.local_hospital_rounded),
+                    label: const Text('Choose / Change doctor'),
+                  ),
                 ],
               ),
             ),
@@ -511,9 +524,9 @@ class DashboardScreen extends StatelessWidget {
       patientId: patientId!,
       doctorId: assignedDoctorId!,
     );
-    final patientUid = CareAssignmentService.instance.activePatientUid ?? '';
+    final myUid = FirebaseAuth.instance.currentUser?.uid ?? '';
     final doctorUid = CareAssignmentService.instance.doctorUidById(assignedDoctorId!) ?? '';
-    if (patientUid.isEmpty || doctorUid.isEmpty) {
+    if (myUid.isEmpty || doctorUid.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Call mapping not ready yet. Please re-login.')),
       );
@@ -524,13 +537,97 @@ class DashboardScreen extends StatelessWidget {
         builder: (_) => LiveCallScreen(
           roomName: roomName,
           headerTitle: 'Calling $assignedDoctor',
-          callerUid: patientUid,
+          callerUid: myUid,
           calleeUid: doctorUid,
           callerRole: 'patient',
           participantName: 'Patient ${patientId!}',
         ),
       ),
     );
+  }
+
+  Future<void> _testCallBackend(BuildContext context) async {
+    if (patientId == null || assignedDoctorId == null) return;
+    final myUid = FirebaseAuth.instance.currentUser?.uid ?? '';
+    if (myUid.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please re-login and try again.')),
+      );
+      return;
+    }
+    final roomName = LiveKitCallService.buildRoomName(
+      patientId: patientId!,
+      doctorId: assignedDoctorId!,
+    );
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Checking token service...')),
+    );
+    try {
+      final creds = await LiveKitCallService.fetchJoinCredentials(
+        roomName: roomName,
+        identity: myUid,
+        participantName: 'Patient ${patientId!}',
+      );
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'PASS: token issued for room $roomName\n'
+            'Server: ${creds['serverUrl']}\n\n'
+            'This only checks the API — it does not open WebSockets or notify '
+            'anyone. If a real call shows "invalid API key", the LIVEKIT_* '
+            'Function secrets are wrong or mixed from different projects.',
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('FAIL: $e')),
+      );
+    }
+  }
+
+  Future<void> _chooseDoctorFromDashboard(BuildContext context) async {
+    if (patientId == null || patientId!.trim().isEmpty) return;
+    final chosen = await showModalBottomSheet<DoctorProfile>(
+      context: context,
+      isScrollControlled: true,
+      builder: (sheetContext) => _DoctorPickerSheet(
+        doctorsFuture: CareAssignmentService.instance.availableDoctors(),
+      ),
+    );
+    if (!context.mounted) return;
+    if (chosen == null) return;
+    final patientUid = FirebaseAuth.instance.currentUser?.uid;
+    if (patientUid == null || patientUid.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please sign in again to change doctor.')),
+      );
+      return;
+    }
+    try {
+      final updated = await CareAssignmentService.instance.reassignPatientToDoctor(
+        patientUid: patientUid,
+        patientId: patientId!,
+        doctorId: chosen.id,
+      );
+      if (!context.mounted) return;
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute<void>(
+          builder: (_) => DashboardScreen(
+            patientId: patientId,
+            assignedDoctor: updated.name,
+            assignedDoctorId: updated.id,
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not change doctor: $e')),
+      );
+    }
   }
 
   Widget _heroStat(String value, String label, Color textColor) {
@@ -714,6 +811,98 @@ class _TimelineTile extends StatelessWidget {
             size: 22,
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _DoctorPickerSheet extends StatelessWidget {
+  const _DoctorPickerSheet({required this.doctorsFuture});
+
+  final Future<List<DoctorProfile>> doctorsFuture;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = context.medicareColorScheme;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
+      decoration: BoxDecoration(
+        color: cs.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      child: SafeArea(
+        child: FutureBuilder<List<DoctorProfile>>(
+          future: doctorsFuture,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const SizedBox(
+                height: 180,
+                child: Center(child: CircularProgressIndicator()),
+              );
+            }
+            if (snapshot.hasError) {
+              return SizedBox(
+                height: 180,
+                child: Center(
+                  child: Text(
+                    'Unable to load doctors.',
+                    style: TextStyle(color: cs.onSurfaceVariant),
+                  ),
+                ),
+              );
+            }
+            final doctors = snapshot.data ?? const <DoctorProfile>[];
+            if (doctors.isEmpty) {
+              return SizedBox(
+                height: 180,
+                child: Center(
+                  child: Text(
+                    'No doctors available yet.',
+                    style: TextStyle(color: cs.onSurfaceVariant),
+                  ),
+                ),
+              );
+            }
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Select Doctor',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: cs.onSurface,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Flexible(
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    itemCount: doctors.length,
+                    separatorBuilder: (context, index) => const SizedBox(height: 8),
+                    itemBuilder: (context, index) {
+                      final doctor = doctors[index];
+                      return ListTile(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        tileColor: cs.surfaceContainerHighest,
+                        leading: CircleAvatar(
+                          backgroundColor: doctor.avatarColor.withValues(alpha: 0.2),
+                          child: Icon(Icons.person, color: doctor.avatarColor),
+                        ),
+                        title: Text(doctor.name),
+                        subtitle: Text('${doctor.id} • ${doctor.specialization}'),
+                        onTap: () => Navigator.of(context).pop(doctor),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
       ),
     );
   }

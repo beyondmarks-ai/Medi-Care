@@ -63,16 +63,36 @@ class CareAssignmentService {
     required String patientUid,
     required String patientName,
     required String patientPhone,
+    String? preferredDoctorId,
   }) async {
+    if (_doctors.isEmpty) {
+      await _hydrateDoctorsFromFirestore();
+    }
     final doctors = _doctors.values.toList(growable: false);
     if (doctors.isEmpty) {
       throw StateError('No doctor is available yet. Create a doctor account first.');
     }
-    doctors.sort((a, b) => _patientsForDoctorCount(a.id) - _patientsForDoctorCount(b.id));
-    final lowestLoad = _patientsForDoctorCount(doctors.first.id);
-    final candidates =
-        doctors.where((d) => _patientsForDoctorCount(d.id) == lowestLoad).toList(growable: false);
-    final doctor = candidates[_random.nextInt(candidates.length)];
+    final DoctorProfile doctor;
+    if (preferredDoctorId != null && preferredDoctorId.trim().isNotEmpty) {
+      final preferred = _doctors[preferredDoctorId.trim()];
+      if (preferred != null) {
+        doctor = preferred;
+      } else {
+        doctors.sort((a, b) => _patientsForDoctorCount(a.id) - _patientsForDoctorCount(b.id));
+        final lowestLoad = _patientsForDoctorCount(doctors.first.id);
+        final candidates = doctors
+            .where((d) => _patientsForDoctorCount(d.id) == lowestLoad)
+            .toList(growable: false);
+        doctor = candidates[_random.nextInt(candidates.length)];
+      }
+    } else {
+      doctors.sort((a, b) => _patientsForDoctorCount(a.id) - _patientsForDoctorCount(b.id));
+      final lowestLoad = _patientsForDoctorCount(doctors.first.id);
+      final candidates = doctors
+          .where((d) => _patientsForDoctorCount(d.id) == lowestLoad)
+          .toList(growable: false);
+      doctor = candidates[_random.nextInt(candidates.length)];
+    }
 
     _patients[patientId] = PatientProfile(
       id: patientId,
@@ -83,15 +103,83 @@ class CareAssignmentService {
     );
     _patientUidById[patientId] = patientUid;
     _patientIdByUid[patientUid] = patientId;
-    _doctorUidById.putIfAbsent(doctor.id, () => doctor.id);
-    _doctorIdByUid.putIfAbsent(doctor.id, () => doctor.id);
+    final doctorUid = _doctorUidById[doctor.id] ?? doctor.id;
+    _doctorUidById.putIfAbsent(doctor.id, () => doctorUid);
+    _doctorIdByUid.putIfAbsent(doctorUid, () => doctor.id);
     await FirebaseProfileService.instance.createAssignment(
       patientUid: patientUid,
       patientId: patientId,
-      doctorUid: doctor.id,
+      doctorUid: doctorUid,
       doctorId: doctor.id,
     );
     return doctor;
+  }
+
+  Future<List<DoctorProfile>> availableDoctors() async {
+    await _hydrateDoctorsFromFirestore();
+    final doctors = _doctors.values.toList(growable: false);
+    doctors.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+    return doctors;
+  }
+
+  Future<DoctorProfile> reassignPatientToDoctor({
+    required String patientUid,
+    required String patientId,
+    required String doctorId,
+  }) async {
+    await _hydrateDoctorsFromFirestore();
+    final doctor = _doctors[doctorId];
+    if (doctor == null) {
+      throw StateError('Selected doctor is no longer available.');
+    }
+
+    await FirebaseProfileService.instance.deactivateAssignmentsForPatient(patientUid);
+    final doctorUid = _doctorUidById[doctor.id] ?? doctor.id;
+    await FirebaseProfileService.instance.createAssignment(
+      patientUid: patientUid,
+      patientId: patientId,
+      doctorUid: doctorUid,
+      doctorId: doctor.id,
+    );
+    await FirebaseProfileService.instance.updatePatientAssignedDoctor(
+      patientUid: patientUid,
+      doctorId: doctor.id,
+      doctorName: doctor.name,
+    );
+
+    final previous = _patients[patientId];
+    _patients[patientId] = PatientProfile(
+      id: patientId,
+      name: previous?.name ?? 'Patient $patientId',
+      phone: previous?.phone ?? '+91 90000 00000',
+      assignedDoctorId: doctor.id,
+      condition: previous?.condition ?? 'General follow-up',
+    );
+    _patientUidById[patientId] = patientUid;
+    _patientIdByUid[patientUid] = patientId;
+    _doctorUidById[doctor.id] = doctorUid;
+    _doctorIdByUid[doctorUid] = doctor.id;
+    _activePatientId = patientId;
+    return doctor;
+  }
+
+  Future<void> _hydrateDoctorsFromFirestore() async {
+    final rows = await FirebaseProfileService.instance.getDoctors();
+    for (final row in rows) {
+      final uid = (row['uid'] as String?) ?? '';
+      final doctorId = (row['uniqueId'] as String?) ?? '';
+      if (uid.isEmpty || doctorId.isEmpty) continue;
+      final rawName = (row['name'] as String?)?.trim() ?? '';
+      final rawSpecialization = (row['specialization'] as String?)?.trim() ?? '';
+      _doctors[doctorId] = DoctorProfile(
+        id: doctorId,
+        name: rawName.isEmpty ? 'Doctor' : rawName,
+        specialization: rawSpecialization.isEmpty ? 'General Medicine' : rawSpecialization,
+        avatarColor: const Color(0xFF6A7BFF),
+      );
+      _doctorUidById[doctorId] = uid;
+      _doctorIdByUid[uid] = doctorId;
+    }
   }
 
   Future<DoctorProfile> registerDoctorFromSignup({
@@ -99,8 +187,22 @@ class CareAssignmentService {
     required String doctorName,
     required String specialization,
   }) async {
-    _doctorSeq += 1;
-    final id = 'DOC$_doctorSeq';
+    await _hydrateDoctorsFromFirestore();
+    var maxSeq = _doctorSeq;
+    for (final doctorId in _doctors.keys) {
+      final match = RegExp(r'^DOC(\d+)$').firstMatch(doctorId);
+      if (match == null) continue;
+      final parsed = int.tryParse(match.group(1) ?? '');
+      if (parsed != null && parsed > maxSeq) {
+        maxSeq = parsed;
+      }
+    }
+    _doctorSeq = maxSeq + 1;
+    var id = 'DOC$_doctorSeq';
+    while (_doctors.containsKey(id)) {
+      _doctorSeq += 1;
+      id = 'DOC$_doctorSeq';
+    }
     final doctor = DoctorProfile(
       id: id,
       name: doctorName.trim().isEmpty ? 'Dr. New Doctor' : doctorName.trim(),

@@ -43,6 +43,13 @@ class FirebaseProfileService {
     return doc.data();
   }
 
+  Future<List<Map<String, dynamic>>> getDoctors() async {
+    final result = await _users.where('role', isEqualTo: 'doctor').get();
+    return result.docs
+        .map((d) => <String, dynamic>{'uid': d.id, ...d.data()})
+        .toList(growable: false);
+  }
+
   Future<void> createAssignment({
     required String patientUid,
     required String patientId,
@@ -56,6 +63,8 @@ class FirebaseProfileService {
         'patientId': patientId,
         'doctorUid': doctorUid,
         'doctorId': doctorId,
+        'active': true,
+        'updatedAt': FieldValue.serverTimestamp(),
         'createdAt': FieldValue.serverTimestamp(),
       },
       SetOptions(merge: true),
@@ -64,12 +73,63 @@ class FirebaseProfileService {
 
   Future<List<Map<String, dynamic>>> assignmentsForDoctor(String doctorUid) async {
     final result = await _assignments.where('doctorUid', isEqualTo: doctorUid).get();
-    return result.docs.map((d) => d.data()).toList(growable: false);
+    return result.docs
+        .map((d) => d.data())
+        .where((row) => (row['active'] as bool?) ?? true)
+        .toList(growable: false);
   }
 
   Future<Map<String, dynamic>?> assignmentForPatient(String patientUid) async {
-    final result = await _assignments.where('patientUid', isEqualTo: patientUid).limit(1).get();
+    final result = await _assignments.where('patientUid', isEqualTo: patientUid).get();
     if (result.docs.isEmpty) return null;
-    return result.docs.first.data();
+    final activeRows = result.docs
+        .map((d) => d.data())
+        .where((row) => (row['active'] as bool?) ?? true)
+        .toList(growable: false);
+    if (activeRows.isEmpty) return null;
+    activeRows.sort((a, b) {
+      final aTs = a['updatedAt'];
+      final bTs = b['updatedAt'];
+      if (aTs is Timestamp && bTs is Timestamp) {
+        return bTs.compareTo(aTs);
+      }
+      if (bTs is Timestamp) return 1;
+      if (aTs is Timestamp) return -1;
+      return 0;
+    });
+    return activeRows.first;
+  }
+
+  Future<void> deactivateAssignmentsForPatient(String patientUid) async {
+    final result = await _assignments.where('patientUid', isEqualTo: patientUid).get();
+    final batch = _db.batch();
+    for (final doc in result.docs) {
+      final data = doc.data();
+      final isActive = (data['active'] as bool?) ?? true;
+      if (!isActive) continue;
+      batch.update(
+        doc.reference,
+        <String, dynamic>{
+          'active': false,
+          'updatedAt': FieldValue.serverTimestamp(),
+        },
+      );
+    }
+    await batch.commit();
+  }
+
+  Future<void> updatePatientAssignedDoctor({
+    required String patientUid,
+    required String doctorId,
+    required String doctorName,
+  }) async {
+    await _users.doc(patientUid).set(
+      <String, dynamic>{
+        'assignedDoctorId': doctorId,
+        'assignedDoctorName': doctorName,
+        'updatedAt': FieldValue.serverTimestamp(),
+      },
+      SetOptions(merge: true),
+    );
   }
 }

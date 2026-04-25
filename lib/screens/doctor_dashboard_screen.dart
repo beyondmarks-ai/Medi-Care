@@ -1,9 +1,11 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:medicare_ai/screens/live_call_screen.dart';
 import 'package:medicare_ai/screens/login_screen.dart';
 import 'package:medicare_ai/services/care_assignment_service.dart';
 import 'package:medicare_ai/services/livekit_call_service.dart';
 import 'package:medicare_ai/theme/portal_extension.dart';
+import 'package:medicare_ai/widgets/incoming_call_listener.dart';
 import 'package:medicare_ai/widgets/theme_mode_toggle.dart';
 
 class DoctorDashboardScreen extends StatelessWidget {
@@ -18,7 +20,11 @@ class DoctorDashboardScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    final doctor = _currentDoctor();
+    return IncomingCallListener(
+      currentRole: 'doctor',
+      participantName: doctorName ?? doctor.name,
+      child: Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: SingleChildScrollView(
@@ -72,7 +78,7 @@ class DoctorDashboardScreen extends StatelessWidget {
           ),
         ),
       ),
-    );
+    ));
   }
 
   Widget _buildHeader(BuildContext context) {
@@ -110,6 +116,11 @@ class DoctorDashboardScreen extends StatelessWidget {
           ),
         ),
         const ThemeModeIconButton(),
+        IconButton(
+          onPressed: () => _testCallBackend(context),
+          icon: const Icon(Icons.health_and_safety_rounded),
+          tooltip: 'Verifies the cloud token endpoint; does not start a call or notify anyone.',
+        ),
         const SizedBox(width: 6),
         IconButton(
           onPressed: () {
@@ -355,9 +366,9 @@ class DoctorDashboardScreen extends StatelessWidget {
       patientId: patient.patientId,
       doctorId: doctor.id,
     );
-    final doctorUid = CareAssignmentService.instance.activeDoctorUid ?? '';
+    final myUid = FirebaseAuth.instance.currentUser?.uid ?? '';
     final patientUid = CareAssignmentService.instance.patientUidById(patient.patientId) ?? '';
-    if (doctorUid.isEmpty || patientUid.isEmpty) {
+    if (myUid.isEmpty || patientUid.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Call mapping not ready yet. Please refresh.')),
       );
@@ -368,13 +379,56 @@ class DoctorDashboardScreen extends StatelessWidget {
         builder: (_) => LiveCallScreen(
           roomName: roomName,
           headerTitle: 'Call with ${patient.name}',
-          callerUid: doctorUid,
+          callerUid: myUid,
           calleeUid: patientUid,
           callerRole: 'doctor',
           participantName: doctor.name,
         ),
       ),
     );
+  }
+
+  Future<void> _testCallBackend(BuildContext context) async {
+    final doctor = _currentDoctor();
+    final myUid = FirebaseAuth.instance.currentUser?.uid ?? '';
+    if (myUid.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please re-login and try again.')),
+      );
+      return;
+    }
+    final samplePatientId = 'TESTPATIENT';
+    final roomName = LiveKitCallService.buildRoomName(
+      patientId: samplePatientId,
+      doctorId: doctor.id,
+    );
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Checking token service...')),
+    );
+    try {
+      final creds = await LiveKitCallService.fetchJoinCredentials(
+        roomName: roomName,
+        identity: myUid,
+        participantName: doctor.name,
+      );
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'PASS: token issued for room $roomName\n'
+            'Server: ${creds['serverUrl']}\n\n'
+            'This only checks the API — it does not open WebSockets or notify '
+            'anyone. If a real call shows "invalid API key", the LIVEKIT_* '
+            'Function secrets are wrong or mixed from different projects.',
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('FAIL: $e')),
+      );
+    }
   }
 }
 

@@ -20,6 +20,8 @@ class PushNotificationService {
     _messaging.onTokenRefresh.listen((_) => _saveToken());
   }
 
+  Future<void> syncTokenForCurrentUser() => _saveToken();
+
   Future<void> _saveToken() async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;

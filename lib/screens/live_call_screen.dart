@@ -12,6 +12,8 @@ class LiveCallScreen extends StatefulWidget {
     required this.calleeUid,
     required this.callerRole,
     required this.participantName,
+    this.createSessionOnConnect = true,
+    this.callId,
   });
 
   final String roomName;
@@ -20,6 +22,8 @@ class LiveCallScreen extends StatefulWidget {
   final String calleeUid;
   final String callerRole;
   final String participantName;
+  final bool createSessionOnConnect;
+  final String? callId;
 
   @override
   State<LiveCallScreen> createState() => _LiveCallScreenState();
@@ -39,14 +43,6 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
   }
 
   Future<void> _connect() async {
-    if (!LiveKitCallService.isConfigured) {
-      setState(() {
-        _connecting = false;
-        _status = 'Missing LiveKit config. Add LIVEKIT_URL and LIVEKIT_TOKEN.';
-      });
-      return;
-    }
-
     final room = Room(
       roomOptions: const RoomOptions(
         adaptiveStream: true,
@@ -61,24 +57,54 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
         identity: widget.callerUid,
         participantName: widget.participantName,
       );
-      _callId = await CallSessionService.instance.createSession(
-        callerUid: widget.callerUid,
-        calleeUid: widget.calleeUid,
-        callerRole: widget.callerRole,
-        roomName: widget.roomName,
-      );
+      _callId = widget.callId;
+      if (widget.createSessionOnConnect) {
+        try {
+          _callId = await CallSessionService.instance.createSession(
+            callerUid: widget.callerUid,
+            calleeUid: widget.calleeUid,
+            callerRole: widget.callerRole,
+            roomName: widget.roomName,
+          );
+        } catch (e) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  'Call connected, but session log failed: $e',
+                ),
+              ),
+            );
+          }
+        }
+      }
       if (!mounted) return;
       setState(() {
         _connecting = false;
         _status = 'Connected in-app call';
       });
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
       setState(() {
         _connecting = false;
-        _status = 'Unable to connect call room.';
+        _status = _formatLiveKitConnectError(e);
       });
     }
+  }
+
+  String _formatLiveKitConnectError(Object e) {
+    final text = e.toString();
+    if (text.contains('invalid API key') || text.contains('Invalid API key')) {
+      return 'LiveKit: invalid API key (connection refused).\n\n'
+          'The "token test" only checks the HTTP API — it does not open a call. '
+          'This error means the API key, secret, and WebSocket URL stored for '
+          'the Cloud Function (LIVEKIT_API_KEY, LIVEKIT_API_SECRET, '
+          'LIVEKIT_URL) are not a matching set for your LiveKit Cloud project. '
+          'Copy all three from the same project in the LiveKit dashboard, '
+          'set them as Firebase Function secrets, redeploy livekitToken, then try again.\n\n'
+          'Details: $e';
+    }
+    return 'Unable to connect call room.\n$e';
   }
 
   Future<void> _toggleMic() async {

@@ -7,6 +7,7 @@ import 'package:medicare_ai/services/care_assignment_service.dart';
 import 'package:medicare_ai/services/document_storage_service.dart';
 import 'package:medicare_ai/services/firebase_auth_service.dart';
 import 'package:medicare_ai/services/firebase_profile_service.dart';
+import 'package:medicare_ai/services/push_notification_service.dart';
 import 'package:medicare_ai/theme/portal_extension.dart';
 import 'package:medicare_ai/widgets/emergency_dock.dart';
 import 'package:medicare_ai/widgets/theme_mode_toggle.dart';
@@ -70,6 +71,7 @@ class _SignupScreenState extends State<SignupScreen> {
       if (!mounted) return;
       final uid = credential.user?.uid;
       if (uid == null) return;
+      await PushNotificationService.instance.syncTokenForCurrentUser();
 
       if (_selectedRole == UserRole.doctor) {
         final doctor = await CareAssignmentService.instance.registerDoctorFromSignup(
@@ -583,7 +585,11 @@ class _SignupScreenState extends State<SignupScreen> {
       color: Colors.transparent,
       child: InkWell(
         borderRadius: BorderRadius.circular(20),
-        onTap: () => setState(() => _selectedRole = role),
+        onTap: () {
+          setState(() {
+            _selectedRole = role;
+          });
+        },
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 220),
           curve: Curves.easeOut,

@@ -14,7 +14,8 @@ service cloud.firestore {
     }
 
     match /users/{uid} {
-      allow read, write: if isOwner(uid);
+      allow read: if isOwner(uid) || resource.data.role == 'doctor' || (isSignedIn() && userRole() == 'doctor');
+      allow write: if isOwner(uid);
     }
 
     match /assignments/{assignmentId} {

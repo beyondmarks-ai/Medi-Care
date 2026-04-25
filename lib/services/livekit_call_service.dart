@@ -1,6 +1,5 @@
 import 'package:livekit_client/livekit_client.dart';
-import 'package:medicare_ai/services/api_key_store.dart';
-import 'package:dart_jsonwebtoken/dart_jsonwebtoken.dart';
+import 'package:medicare_ai/services/cloud_backend_service.dart';
 
 class LiveKitCallService {
   LiveKitCallService._();
@@ -12,40 +11,33 @@ class LiveKitCallService {
     return 'medicare_${doctorId}_$patientId';
   }
 
-  static String get serverUrl => ApiKeyStore.read('LIVEKIT_URL');
-  static String get apiKey => ApiKeyStore.read('LIVEKIT_API_KEY');
-  static String get apiSecret => ApiKeyStore.read('LIVEKIT_API_SECRET');
+  static bool get isConfigured => true;
 
-  static bool get isConfigured =>
-      serverUrl.trim().isNotEmpty &&
-      apiKey.trim().isNotEmpty &&
-      apiSecret.trim().isNotEmpty;
-
-  static String buildAccessToken({
+  static Future<Map<String, String>> fetchJoinCredentials({
     required String roomName,
     required String identity,
     required String participantName,
-  }) {
-    final nowSeconds = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-    final jwt = JWT(
-      <String, dynamic>{
-        'iss': apiKey,
-        'sub': identity,
-        'name': participantName,
-        'nbf': nowSeconds - 5,
-        'exp': nowSeconds + (60 * 60),
-        'video': <String, dynamic>{
-          'roomJoin': true,
-          'room': roomName,
-          'canPublish': true,
-          'canSubscribe': true,
-        },
+  }) async {
+    final response = await CloudBackendService.postJsonWithFallback(
+      paths: const <String>[
+        '/livekit/token',
+        '/livekitToken',
+      ],
+      body: <String, dynamic>{
+        'roomName': roomName,
+        'identity': identity,
+        'participantName': participantName,
       },
     );
-    return jwt.sign(
-      SecretKey(apiSecret),
-      algorithm: JWTAlgorithm.HS256,
-    );
+    final serverUrl = (response['serverUrl'] as String?)?.trim() ?? '';
+    final token = (response['token'] as String?)?.trim() ?? '';
+    if (serverUrl.isEmpty || token.isEmpty) {
+      throw StateError('LiveKit token service returned invalid response.');
+    }
+    return <String, String>{
+      'serverUrl': serverUrl,
+      'token': token,
+    };
   }
 
   static Future<void> connectAudio({
@@ -54,15 +46,13 @@ class LiveKitCallService {
     required String identity,
     required String participantName,
   }) async {
-    if (!isConfigured) {
-      throw StateError(
-          'LiveKit is not configured. Set LIVEKIT_URL, LIVEKIT_API_KEY, LIVEKIT_API_SECRET.');
-    }
-    final token = buildAccessToken(
+    final creds = await fetchJoinCredentials(
       roomName: roomName,
       identity: identity,
       participantName: participantName,
     );
+    final serverUrl = creds['serverUrl']!;
+    final token = creds['token']!;
 
     await room.connect(
       serverUrl,

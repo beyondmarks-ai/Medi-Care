@@ -5,6 +5,7 @@ import 'package:medicare_ai/screens/signup_screen.dart';
 import 'package:medicare_ai/services/care_assignment_service.dart';
 import 'package:medicare_ai/services/firebase_auth_service.dart';
 import 'package:medicare_ai/services/firebase_profile_service.dart';
+import 'package:medicare_ai/services/push_notification_service.dart';
 import 'package:medicare_ai/theme/portal_extension.dart';
 import 'package:medicare_ai/widgets/emergency_dock.dart';
 import 'package:medicare_ai/widgets/theme_mode_toggle.dart';
@@ -42,6 +43,7 @@ class _LoginScreenState extends State<LoginScreen> {
       );
       final uid = credential.user?.uid;
       if (uid == null || !mounted) return;
+      await PushNotificationService.instance.syncTokenForCurrentUser();
       final profile = await FirebaseProfileService.instance.getProfile(uid);
       final role = (profile?['role'] as String?) ?? 'patient';
       final uniqueId = (profile?['uniqueId'] as String?) ?? '';
