@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:medicare_ai/services/app_log_service.dart';
 import 'package:medicare_ai/services/cloud_backend_service.dart';
 
 class CallSessionService {
@@ -47,8 +48,9 @@ class CallSessionService {
           'roomName': roomName,
         },
       );
-    } catch (_) {
-      // Keep call creation functional even if notification webhook fails.
+    } catch (e, st) {
+      AppLogService.instance.error('Failed to start call session backend flow', e, st);
+      // Keep call creation functional even if backend side-effects fail.
     }
     return doc.id;
   }
@@ -65,6 +67,21 @@ class CallSessionService {
       },
       SetOptions(merge: true),
     );
+    try {
+      await CloudBackendService.postJsonWithFallback(
+        paths: const <String>[
+          '/call/session/end',
+          '/callSessionEnd',
+        ],
+        body: <String, dynamic>{
+          'callId': callId,
+          'recordingUrl': recordingUrl,
+        },
+      );
+    } catch (e, st) {
+      AppLogService.instance.error('Failed to finalize call session backend flow', e, st);
+      // Keep call tear-down functional if transcript processing endpoint fails.
+    }
   }
 
   Future<void> updateStatus({
