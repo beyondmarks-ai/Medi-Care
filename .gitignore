@@ -44,6 +44,9 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
+# Microsoft ML / binary dataset exports (use Kaggle ZIP + scripts/build_pharmacy_from_kaggle_images.py)
+*.dataset
+
 # Local API keys (never commit)
 env.local.json
 android/app/google-services.json

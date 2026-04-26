@@ -1,0 +1,98 @@
+{
+  "version": 1,
+  "disclaimer": "This information is for general education only. It is not a diagnosis, prescription, or medical advice. Medicines and doses must be decided by a qualified prescriber who knows your full history. In an emergency, call your local emergency number.",
+  "conditions": [
+    {
+      "id": "t2diabetes",
+      "displayName": "Diabetes (blood sugar / \"sugar\")",
+      "keywords": ["sugar", "diabetes", "glucose", "type 2"],
+      "summary": "Long-term high blood sugar (hyperglycemia) can affect nerves, blood vessels, eyes, and kidneys. Good control combines healthy eating, activity, regular monitoring, and medications when prescribed.",
+      "selfCare": [
+        "Follow meal patterns and portions your care team recommends (often: more vegetables, fewer sugary drinks, consistent carb timing if advised).",
+        "Move most days: walking and light activity as cleared by your clinician.",
+        "Check blood sugar if you were given a glucometer, and keep a log if asked.",
+        "Foot care: inspect feet daily; seek care for cuts that do not heal."
+      ],
+      "whenToSeeDoctor": [
+        "First diagnosis or if numbers stay high despite lifestyle changes — medication may be needed.",
+        "Symptoms of very high or very low blood sugar, vomiting, or confusion — urgent care.",
+        "Pregnancy or planning pregnancy — care must be specialist-led."
+      ],
+      "medicationNote": "Many people with type 2 diabetes use one or more of: metformin, other oral medicines, non-insulin injectables, or insulin. Doses, timing, and whether a drug is safe for you depend on kidney function, other conditions, and interactions — only your prescriber should set or change them.",
+      "medicationClasses": [
+        {
+          "name": "Metformin (common first-line for many adults with type 2)",
+          "typicalUse": "Often used to improve insulin sensitivity. Starting dose, maximum dose, and whether it is safe for you are decided with blood tests and your doctor — do not copy someone else's dose."
+        },
+        {
+          "name": "Insulin and other options",
+          "typicalUse": "Some people need insulin or other classes of medicines. Dosing is highly individual and must be titrated with professional guidance."
+        }
+      ]
+    },
+    {
+      "id": "hypertension",
+      "displayName": "High blood pressure (BP)",
+      "keywords": ["bp", "pressure", "hypertension"],
+      "summary": "Sustained high blood pressure increases risk of stroke and heart disease. Management includes lifestyle changes and, when needed, long-term medication.",
+      "selfCare": [
+        "Reduce salt, limit alcohol, maintain a healthy weight, and stay active as advised.",
+        "Home BP monitoring if your clinician recommended it, at the same time each day.",
+        "Take prescribed medicines on schedule — do not stop abruptly without medical advice."
+      ],
+      "whenToSeeDoctor": [
+        "Very high readings with chest pain, bad headache, or neurological symptoms — emergency.",
+        "To choose or adjust medicines — class and dose need regular review."
+      ],
+      "medicationNote": "There are several drug classes (e.g. ACE inhibitors, ARBs, diuretics, calcium-channel blockers). The right one for you depends on age, kidney function, and other health issues. Doses are titrated by your prescriber.",
+      "medicationClasses": [
+        {
+          "name": "Example classes (not a personal plan)",
+          "typicalUse": "Your doctor picks one or more classes and a starting dose, then follows up with measurements and side-effect checks."
+        }
+      ]
+    },
+    {
+      "id": "fever_viral",
+      "displayName": "Fever & viral illness (flu-like)",
+      "keywords": ["fever", "viral", "temperature", "flu"],
+      "summary": "Fever is often the body's response to infection. Rest, fluids, and simple measures help; some medicines reduce discomfort when appropriate and safe for you.",
+      "selfCare": [
+        "Drink water or ORS; rest.",
+        "Light clothing; avoid ice baths. Watch for dehydration (dry mouth, little urine, dizziness)."
+      ],
+      "whenToSeeDoctor": [
+        "Infants with fever, or fever lasting more than a few days, or severe symptoms — seek care.",
+        "If you have liver, kidney, bleeding risk, or are on other drugs — check before any medicine."
+      ],
+      "medicationNote": "Fever reducers and pain relievers (e.g. paracetamol/acetaminophen class) are used in many guidelines. Dose by weight/age in children and with dose limits in adults — use the leaflet or ask a pharmacist. Avoid doubling up products that already contain the same drug.",
+      "medicationClasses": [
+        {
+          "name": "Paracetamol / acetaminophen (illustrative, not a prescription)",
+          "typicalUse": "Common adult maximum daily amount is set on the product; liver disease and alcohol use change safety — confirm with a clinician or label."
+        }
+      ]
+    },
+    {
+      "id": "gastric_reflux",
+      "displayName": "Acid reflux / heartburn",
+      "keywords": ["gastric", "acid", "heartburn", "GERD"],
+      "summary": "Stomach acid irritating the oesophagus can cause burning. Lifestyle helps; persistent symptoms may need prescribed therapy.",
+      "selfCare": [
+        "Smaller meals; avoid late heavy dinners; limit triggers you notice (e.g. spicy, fatty foods).",
+        "Elevate head of bed if night symptoms."
+      ],
+      "whenToSeeDoctor": [
+        "Difficulty swallowing, weight loss, black stools, or severe pain — urgent assessment.",
+        "Long-standing symptoms — may need endoscopy or prescription treatment."
+      ],
+      "medicationNote": "Antacids, H2 blockers, and proton-pump inhibitors are used in different situations. Long-term use of some classes has risks; duration and dose should be guided by a prescriber.",
+      "medicationClasses": [
+        {
+          "name": "PPIs and related (example category)",
+          "typicalUse": "Chronic use and step-down are decided with your doctor to balance benefit and side effects."
+        }
+      ]
+    }
+  ]
+}

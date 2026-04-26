@@ -293,6 +293,9 @@ class CareAssignmentService {
   String? doctorUidById(String doctorId) => _doctorUidById[doctorId];
   String? patientUidById(String patientId) => _patientUidById[patientId];
 
+  /// Resolved patient row when known (e.g. after [hydrateDoctorPatients] or local signup).
+  PatientProfile? patientById(String patientId) => _patients[patientId];
+
   bool canPatientCallDoctor({
     required String patientId,
     required String doctorId,

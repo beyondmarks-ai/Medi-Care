@@ -47,5 +47,29 @@ service cloud.firestore {
       );
       allow create: if isSignedIn() && request.resource.data.callerUid == request.auth.uid;
     }
+
+    // Doctor → patient pharmacy cart: doctor creates pending rows; patient marks merged
+    match /doctor_pharmacy_sends/{docId} {
+      allow read: if isSignedIn() && (
+        resource.data.patientUid == request.auth.uid ||
+        resource.data.doctorAuthUid == request.auth.uid
+      );
+      // Avoid strict hasAll on keys (SDK / platform differences); validate fields directly.
+      allow create: if isSignedIn() &&
+        request.auth.uid == request.resource.data.doctorAuthUid &&
+        request.resource.data.status == 'pending' &&
+        request.resource.data.patientUid is string &&
+        request.resource.data.patientId is string &&
+        request.resource.data.product is map &&
+        (request.resource.data.quantity is int || request.resource.data.quantity is float) &&
+        request.resource.data.doctorId is string &&
+        request.resource.data.doctorName is string &&
+        request.resource.data.doctorAuthUid is string;
+      allow update: if isSignedIn() &&
+        resource.data.patientUid == request.auth.uid &&
+        resource.data.status == 'pending' &&
+        request.resource.data.status == 'merged' &&
+        request.resource.data.mergedAt != null;
+    }
   }
 }

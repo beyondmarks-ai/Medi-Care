@@ -1,0 +1,26 @@
+id,name,category,form,manufacturer,price,description,composition,pack_size
+1,Paracetamol 500mg Tablet,Analgesic,Tablet,Generic Pharma,45,Used for pain and fever as directed by a clinician.,Paracetamol 500mg,10 tablets
+2,Ibuprofen 400mg Tablet,Analgesic,Tablet,ReliefCare Labs,78,NSAID; use only as advised if you have no contraindications.,Ibuprofen 400mg,10 tablets
+3,Oral Rehydration Salts (ORS),Electrolyte,Powder sachet,HealthSip Co.,12,Rehydration support for fluid loss; follow preparation on pack.,ORS formula per label,1 sachet
+4,Vitamin D3 60k Cholecalciferol,Vitamin,Capsule,NutriWell,189,Deficiency support; confirm dose with a prescriber.,Cholecalciferol,4 capsules
+5,Multivitamin with Minerals,Vitamin,Tablet,DayBalance,120,Dietary support; not a substitute for balanced food.,B-complex and minerals,30 tablets
+6,Calcium + Vitamin D3,Vitamin,Tablet,BoneLine,99,Bone health support; individualized dosing.,Calcium carbonate + D3,15 tablets
+7,Folic Acid 5mg,Vitamin,Tablet,MatCare,35,Pregnancy planning support as prescribed by obstetrician.,Folic acid,30 tablets
+8,Zinc + Vitamin C Chewable,Vitamin,Chewable,SunnyKids,88,Supplement; follow age-appropriate use on pack.,Zinc + ascorbic acid,20 tabs
+9,Cetirizine 10mg Tablet,Antihistamine,Tablet,AllerFree,42,Allergy symptoms; may cause drowsiness.,Cetirizine HCl,10 tablets
+10,Loratadine 10mg Tablet,Antihistamine,Tablet,ClearAir,55,Non-sedating option for some allergies as directed.,Loratadine,10 tablets
+11,Dextromethorphan Cough Linctus,Cough,Oral solution,CoughEase,65,Cough comfort; not for all cough types; ask pharmacist.,Dextromethorphan,100ml
+12,Antiseptic Wound Wash,First aid,Liquid,SafeSkin,40,Wound cleaning before dressing.,Povidone-iodine,60ml
+13,Sterile Gauze Pads,First aid,Dressing,MediDress,25,Wound care accessory.,Cotton gauze,10 pack
+14,Digital BP Monitor (adult Cuff),Device,Unit,VitalCheck,1990,Home blood pressure monitoring; read manual.,Electronic monitor,1 unit
+15,Glucose Test Strips (50),Diagnostics,Strips,GlucoTru,850,Strips for compatible glucometer only; confirm model.,Strips,50
+16,Insulin pen needles 4mm,Device,Box,PrickSafe,320,For compatible pens; single patient use; Rx context.,Needles,100 units
+17,Hand Sanitizer 500ml,Hygiene,Antiseptic,CleanHand,150,Hand hygiene with alcohol-based solution.,Isopropyl alcohol,500ml
+18,Surgical Masks (3-ply) box,Hygiene,Mask,AirShield,199,Single-use barrier; change when soiled or damp.,Spun-bond,50 masks
+19,Electrolyte drink (ready),Electrolyte,Bottle,ReCharge,40,Rehydration beverage; not for infant-only rehydration.,Formulation per label,200ml
+20,Omega-3 Fish Oil 1000mg,Supplement,Softgel,OceanPure,320,Supplement; check interactions with anticoagulants.,Fish oil,60 softgels
+21,Probiotics 10B CFU,Supplement,Capsule,GutLine,240,Digestive support; storage per label.,Multi-strain blend,20 caps
+22,Isotonic nasal spray,ENT,Spray,SeaMist,185,Saline rinse comfort; for intended use only.,0.9% saline,20ml
+23,Throat lozenges (honey),ENT,Lozenges,SoothThroat,95,Throat comfort; sugar content awareness if needed.,Menthol + flavor,20 loz
+24,Antifungal cream 1%,Dermatology,Cream,DermaFix,75,Topical use as directed; avoid eyes and mucosa.,Clotrimazole,20g
+25,Antiseptic bandages assorted,First aid,Plaster,StickSafe,60,Cover minor cuts; change daily.,Plasters,20 mix

@@ -3,7 +3,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:medicare_ai/screens/app_logs_screen.dart';
 import 'package:medicare_ai/screens/live_call_screen.dart';
 import 'package:medicare_ai/screens/login_screen.dart';
+import 'package:medicare_ai/screens/condition_reference_screen.dart';
 import 'package:medicare_ai/screens/medical_ai_chat_screen.dart';
+import 'package:medicare_ai/screens/pharmacy_store_screen.dart';
 import 'package:medicare_ai/services/app_log_service.dart';
 import 'package:medicare_ai/services/care_assignment_service.dart';
 import 'package:medicare_ai/services/firebase_auth_service.dart';
@@ -11,6 +13,7 @@ import 'package:medicare_ai/services/livekit_call_service.dart';
 import 'package:medicare_ai/theme/portal_extension.dart';
 import 'package:medicare_ai/widgets/emergency_dock.dart';
 import 'package:medicare_ai/widgets/incoming_call_listener.dart';
+import 'package:medicare_ai/widgets/patient_pharmacy_inbox_listener.dart';
 import 'package:medicare_ai/widgets/theme_mode_toggle.dart';
 
 const _success = Color(0xFF58B95E);
@@ -34,82 +37,85 @@ class DashboardScreen extends StatelessWidget {
     return IncomingCallListener(
       currentRole: 'patient',
       participantName: patientId == null ? 'Patient' : 'Patient $patientId',
-      child: Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      body: SafeArea(
-        child: Stack(
-          children: [
-            Positioned.fill(
-              child: CustomScrollView(
-                physics: const BouncingScrollPhysics(),
-                slivers: [
-                  SliverToBoxAdapter(child: _buildHeader(context)),
-                  SliverToBoxAdapter(child: _buildGreeting(context)),
-                  if (patientId != null && assignedDoctor != null)
-                    SliverToBoxAdapter(child: _buildPatientIdentityCard(context)),
-                  SliverToBoxAdapter(child: _buildHeroCard(context)),
-                  SliverToBoxAdapter(child: _buildSectionTitle(context, 'Quick actions')),
-                  SliverPadding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    sliver: SliverGrid(
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        mainAxisSpacing: 14,
-                        crossAxisSpacing: 14,
-                        childAspectRatio: 1.15,
+      child: PatientPharmacyInboxListener(
+        child: Scaffold(
+          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+          body: SafeArea(
+            child: Stack(
+              children: [
+                Positioned.fill(
+                  child: CustomScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    slivers: [
+                      SliverToBoxAdapter(child: _buildHeader(context)),
+                      SliverToBoxAdapter(child: _buildGreeting(context)),
+                      if (patientId != null && assignedDoctor != null)
+                        SliverToBoxAdapter(child: _buildPatientIdentityCard(context)),
+                      SliverToBoxAdapter(child: _buildHeroCard(context)),
+                      SliverToBoxAdapter(child: _buildSectionTitle(context, 'Quick actions')),
+                      SliverPadding(
+                        padding: const EdgeInsets.symmetric(horizontal: 24),
+                        sliver: SliverGrid(
+                          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            mainAxisSpacing: 14,
+                            crossAxisSpacing: 14,
+                            childAspectRatio: 1.15,
+                          ),
+                          delegate: SliverChildListDelegate(
+                            _quickActionCards(context),
+                          ),
+                        ),
                       ),
-                      delegate: SliverChildListDelegate(
-                        _quickActionCards(context),
+                      SliverToBoxAdapter(child: _buildSectionTitle(context, 'Today')),
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 24),
+                          child: Column(
+                            children: [
+                              _TimelineTile(
+                                title: 'Vitals in range',
+                                subtitle: 'Last synced from wearable · 2h ago',
+                                leading: Icons.favorite_rounded,
+                                leadingBg: _tileLeadBg(context, 0),
+                                leadingColor: _danger,
+                              ),
+                              const SizedBox(height: 10),
+                              _TimelineTile(
+                                title: 'Follow-up: Dr. Mehta',
+                                subtitle: 'Cardiology · Tomorrow 10:30 AM',
+                                leading: Icons.event_available_rounded,
+                                leadingBg: _tileLeadBg(context, 1),
+                                leadingColor: _primary,
+                              ),
+                              const SizedBox(height: 10),
+                              _TimelineTile(
+                                title: 'Refill: Metformin 500mg',
+                                subtitle: 'Pharmacy ready for pickup',
+                                leading: Icons.local_pharmacy_rounded,
+                                leadingBg: _tileLeadBg(context, 2),
+                                leadingColor: _success,
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
-                    ),
+                      const SliverToBoxAdapter(child: SizedBox(height: 120)),
+                    ],
                   ),
-                  SliverToBoxAdapter(child: _buildSectionTitle(context, 'Today')),
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24),
-                      child: Column(
-                        children: [
-                          _TimelineTile(
-                            title: 'Vitals in range',
-                            subtitle: 'Last synced from wearable · 2h ago',
-                            leading: Icons.favorite_rounded,
-                            leadingBg: _tileLeadBg(context, 0),
-                            leadingColor: _danger,
-                          ),
-                          const SizedBox(height: 10),
-                          _TimelineTile(
-                            title: 'Follow-up: Dr. Mehta',
-                            subtitle: 'Cardiology · Tomorrow 10:30 AM',
-                            leading: Icons.event_available_rounded,
-                            leadingBg: _tileLeadBg(context, 1),
-                            leadingColor: _primary,
-                          ),
-                          const SizedBox(height: 10),
-                          _TimelineTile(
-                            title: 'Refill: Metformin 500mg',
-                            subtitle: 'Pharmacy ready for pickup',
-                            leading: Icons.local_pharmacy_rounded,
-                            leadingBg: _tileLeadBg(context, 2),
-                            leadingColor: _success,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SliverToBoxAdapter(child: SizedBox(height: 120)),
-                ],
-              ),
+                ),
+                const Positioned(
+                  bottom: 24,
+                  left: 24,
+                  right: 24,
+                  child: EmergencyDock(),
+                ),
+              ],
             ),
-            const Positioned(
-              bottom: 24,
-              left: 24,
-              right: 24,
-              child: EmergencyDock(),
-            ),
-          ],
+          ),
         ),
       ),
-    ));
+    );
   }
 
   static List<Widget> _quickActionCards(BuildContext context) {
@@ -145,9 +151,28 @@ class DashboardScreen extends StatelessWidget {
       _QuickActionCard(
         icon: Icons.medication_liquid_rounded,
         label: 'Medication',
-        subtitle: 'Doses & refills',
+        subtitle: 'Condition reference (education)',
         tint: t[3],
-        onTap: () => _comingSoon(context),
+        onTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (context) => const ConditionReferenceScreen(),
+            ),
+          );
+        },
+      ),
+      _QuickActionCard(
+        icon: Icons.local_pharmacy_rounded,
+        label: 'Pharmacy',
+        subtitle: 'Browse from catalog (CSV)',
+        tint: t[0],
+        onTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (context) => const PharmacyStoreScreen(),
+            ),
+          );
+        },
       ),
     ];
   }
@@ -198,48 +223,56 @@ class DashboardScreen extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 12, 24, 0),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Row(
-            children: [
-              Container(
-                height: 48,
-                width: 48,
-                padding: const EdgeInsets.all(4),
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: cs.surface,
-                  boxShadow: [
-                    BoxShadow(
-                      color: cs.shadow.withValues(alpha: 0.1),
-                      blurRadius: 10,
-                    )
-                  ],
+          Expanded(
+            child: Row(
+              children: [
+                Container(
+                  height: 48,
+                  width: 48,
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: cs.surface,
+                    boxShadow: [
+                      BoxShadow(
+                        color: cs.shadow.withValues(alpha: 0.1),
+                        blurRadius: 10,
+                      )
+                    ],
+                  ),
+                  child: Image.asset('assets/logo.png', fit: BoxFit.contain),
                 ),
-                child: Image.asset('assets/logo.png', fit: BoxFit.contain),
-              ),
-              const SizedBox(width: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Medicare AI',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: cs.onSurface,
-                    ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Medicare AI',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: cs.onSurface,
+                        ),
+                      ),
+                      Text(
+                        'Health Portal',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: cs.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
                   ),
-                  Text(
-                    'Health Portal',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: cs.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ),
-            ],
+                ),
+              ],
+            ),
           ),
           Row(
             mainAxisSize: MainAxisSize.min,

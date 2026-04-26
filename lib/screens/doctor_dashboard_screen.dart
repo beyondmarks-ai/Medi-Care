@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:medicare_ai/screens/app_logs_screen.dart';
+import 'package:medicare_ai/screens/doctor_send_pharmacy_screen.dart';
 import 'package:medicare_ai/screens/live_call_screen.dart';
 import 'package:medicare_ai/screens/login_screen.dart';
 import 'package:medicare_ai/services/app_log_service.dart';
@@ -118,6 +119,17 @@ class DoctorDashboardScreen extends StatelessWidget {
           ),
         ),
         const ThemeModeIconButton(),
+        IconButton(
+          onPressed: () {
+            Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const DoctorSendPharmacyScreen(),
+              ),
+            );
+          },
+          icon: const Icon(Icons.medication_liquid_outlined),
+          tooltip: 'Send medicine to a patient’s pharmacy cart',
+        ),
         IconButton(
           onPressed: () => _testCallBackend(context),
           icon: const Icon(Icons.health_and_safety_rounded),
@@ -352,6 +364,37 @@ class DoctorDashboardScreen extends StatelessWidget {
                   ),
                 ),
               ),
+              if (patient.patientId != '---') ...[
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.tonalIcon(
+                    onPressed: () {
+                      final pre = CareAssignmentService.instance
+                          .patientById(patient.patientId);
+                      Navigator.of(sheetContext).pop();
+                      if (!context.mounted) {
+                        return;
+                      }
+                      Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => DoctorSendPharmacyScreen(
+                            preSelectedPatient: pre,
+                          ),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.shopping_cart_outlined),
+                    label: const Text('Send to pharmacy cart'),
+                    style: FilledButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ],
           ),
         );

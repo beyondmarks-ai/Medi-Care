@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:medicare_ai/firebase_options.dart';
 import 'package:medicare_ai/screens/splash_screen.dart';
 import 'package:medicare_ai/services/app_log_service.dart';
+import 'package:medicare_ai/services/api_key_store.dart';
 import 'package:medicare_ai/services/push_notification_service.dart';
 import 'package:medicare_ai/services/theme_mode_controller.dart';
 import 'package:medicare_ai/theme/app_theme_data.dart';
@@ -22,6 +23,7 @@ Future<void> main() async {
 
   await runZonedGuarded(() async {
     WidgetsFlutterBinding.ensureInitialized();
+    await ApiKeyStore.initialize();
     if (kIsWeb) {
       await Firebase.initializeApp(
         options: DefaultFirebaseOptions.currentPlatform,
