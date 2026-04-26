@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:medicare_ai/screens/app_logs_screen.dart';
 import 'package:medicare_ai/screens/live_call_screen.dart';
 import 'package:medicare_ai/screens/login_screen.dart';
 import 'package:medicare_ai/screens/medical_ai_chat_screen.dart';
+import 'package:medicare_ai/services/app_log_service.dart';
 import 'package:medicare_ai/services/care_assignment_service.dart';
 import 'package:medicare_ai/services/firebase_auth_service.dart';
 import 'package:medicare_ai/services/livekit_call_service.dart';
@@ -254,6 +256,14 @@ class DashboardScreen extends StatelessWidget {
               }),
               const SizedBox(width: 8),
               _circleIconButton(context, Icons.help_outline, () => _comingSoon(context)),
+              const SizedBox(width: 8),
+              _circleIconButton(context, Icons.receipt_long_rounded, () {
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const AppLogsScreen(),
+                  ),
+                );
+              }),
               const SizedBox(width: 8),
               _circleIconButton(context, Icons.notifications_outlined, () {
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -581,6 +591,7 @@ class DashboardScreen extends StatelessWidget {
         ),
       );
     } catch (e) {
+      AppLogService.instance.error('Patient token service test failed', e);
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('FAIL: $e')),
@@ -623,6 +634,7 @@ class DashboardScreen extends StatelessWidget {
         ),
       );
     } catch (e) {
+      AppLogService.instance.error('Failed to change assigned doctor', e);
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Could not change doctor: $e')),

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:medicare_ai/screens/app_logs_screen.dart';
 import 'package:medicare_ai/screens/dashboard_screen.dart';
 import 'package:medicare_ai/screens/doctor_dashboard_screen.dart';
 import 'package:medicare_ai/screens/signup_screen.dart';
+import 'package:medicare_ai/services/app_log_service.dart';
 import 'package:medicare_ai/services/care_assignment_service.dart';
 import 'package:medicare_ai/services/firebase_auth_service.dart';
 import 'package:medicare_ai/services/firebase_profile_service.dart';
@@ -80,6 +82,7 @@ class _LoginScreenState extends State<LoginScreen> {
         );
       }
     } catch (e) {
+      AppLogService.instance.error('Sign in failed', e);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Sign in failed: $e')),
@@ -183,10 +186,21 @@ class _LoginScreenState extends State<LoginScreen> {
                             const ThemeModeToggle(size: 0.95),
                             const SizedBox(width: 4),
                             _buildCircularIconButton(
-                                context, Icons.help_outline),
+                              context,
+                              Icons.receipt_long_rounded,
+                              onTap: () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute<void>(
+                                    builder: (_) => const AppLogsScreen(),
+                                  ),
+                                );
+                              },
+                            ),
                             const SizedBox(width: 10),
                             _buildCircularIconButton(
-                                context, Icons.notifications_outlined),
+                              context,
+                              Icons.notifications_outlined,
+                            ),
                           ],
                         )
                       ],
@@ -373,23 +387,24 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Widget _buildCircularIconButton(BuildContext context, IconData icon) {
+  Widget _buildCircularIconButton(
+    BuildContext context,
+    IconData icon, {
+    VoidCallback? onTap,
+  }) {
     final cs = context.medicareColorScheme;
-    return Container(
-      height: 48,
-      width: 48,
-      decoration: BoxDecoration(
-        color: cs.surface,
-        shape: BoxShape.circle,
-        boxShadow: [
-          BoxShadow(
-            color: cs.shadow.withValues(alpha: 0.06),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          )
-        ],
+    return Material(
+      color: cs.surface,
+      shape: const CircleBorder(),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: SizedBox(
+          height: 48,
+          width: 48,
+          child: Icon(icon, color: cs.onSurface, size: 22),
+        ),
       ),
-      child: Icon(icon, color: cs.onSurface, size: 22),
     );
   }
 

@@ -1,7 +1,9 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:medicare_ai/screens/app_logs_screen.dart';
 import 'package:medicare_ai/screens/live_call_screen.dart';
 import 'package:medicare_ai/screens/login_screen.dart';
+import 'package:medicare_ai/services/app_log_service.dart';
 import 'package:medicare_ai/services/care_assignment_service.dart';
 import 'package:medicare_ai/services/livekit_call_service.dart';
 import 'package:medicare_ai/theme/portal_extension.dart';
@@ -120,6 +122,17 @@ class DoctorDashboardScreen extends StatelessWidget {
           onPressed: () => _testCallBackend(context),
           icon: const Icon(Icons.health_and_safety_rounded),
           tooltip: 'Verifies the cloud token endpoint; does not start a call or notify anyone.',
+        ),
+        IconButton(
+          onPressed: () {
+            Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const AppLogsScreen(),
+              ),
+            );
+          },
+          icon: const Icon(Icons.receipt_long_rounded),
+          tooltip: 'Open app logs',
         ),
         const SizedBox(width: 6),
         IconButton(
@@ -424,6 +437,7 @@ class DoctorDashboardScreen extends StatelessWidget {
         ),
       );
     } catch (e) {
+      AppLogService.instance.error('Doctor token service test failed', e);
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('FAIL: $e')),

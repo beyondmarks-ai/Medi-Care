@@ -325,9 +325,13 @@ exports.livekitToken = onRequest(
           return sendJson(res, 400, {error: "roomName, identity, participantName are required"}, origin);
         }
 
+        const apiKey = LIVEKIT_API_KEY.value().trim();
+        const apiSecret = LIVEKIT_API_SECRET.value().trim();
+        const serverUrl = LIVEKIT_URL.value().trim();
+
         const token = new AccessToken(
-            LIVEKIT_API_KEY.value(),
-            LIVEKIT_API_SECRET.value(),
+            apiKey,
+            apiSecret,
             {
               identity,
               name: participantName,
@@ -341,7 +345,7 @@ exports.livekitToken = onRequest(
           canSubscribe: true,
         });
         return sendJson(res, 200, {
-          serverUrl: LIVEKIT_URL.value(),
+          serverUrl,
           token: await token.toJwt(),
         }, origin);
       } catch (error) {

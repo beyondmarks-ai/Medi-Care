@@ -1,4 +1,5 @@
 import 'package:livekit_client/livekit_client.dart';
+import 'package:medicare_ai/services/app_log_service.dart';
 import 'package:medicare_ai/services/cloud_backend_service.dart';
 
 class LiveKitCallService {
@@ -18,26 +19,31 @@ class LiveKitCallService {
     required String identity,
     required String participantName,
   }) async {
-    final response = await CloudBackendService.postJsonWithFallback(
-      paths: const <String>[
-        '/livekit/token',
-        '/livekitToken',
-      ],
-      body: <String, dynamic>{
-        'roomName': roomName,
-        'identity': identity,
-        'participantName': participantName,
-      },
-    );
-    final serverUrl = (response['serverUrl'] as String?)?.trim() ?? '';
-    final token = (response['token'] as String?)?.trim() ?? '';
-    if (serverUrl.isEmpty || token.isEmpty) {
-      throw StateError('LiveKit token service returned invalid response.');
+    try {
+      final response = await CloudBackendService.postJsonWithFallback(
+        paths: const <String>[
+          '/livekit/token',
+          '/livekitToken',
+        ],
+        body: <String, dynamic>{
+          'roomName': roomName,
+          'identity': identity,
+          'participantName': participantName,
+        },
+      );
+      final serverUrl = (response['serverUrl'] as String?)?.trim() ?? '';
+      final token = (response['token'] as String?)?.trim() ?? '';
+      if (serverUrl.isEmpty || token.isEmpty) {
+        throw StateError('LiveKit token service returned invalid response.');
+      }
+      return <String, String>{
+        'serverUrl': serverUrl,
+        'token': token,
+      };
+    } catch (e, st) {
+      AppLogService.instance.error('Failed to fetch LiveKit token', e, st);
+      rethrow;
     }
-    return <String, String>{
-      'serverUrl': serverUrl,
-      'token': token,
-    };
   }
 
   static Future<void> connectAudio({
@@ -46,21 +52,26 @@ class LiveKitCallService {
     required String identity,
     required String participantName,
   }) async {
-    final creds = await fetchJoinCredentials(
-      roomName: roomName,
-      identity: identity,
-      participantName: participantName,
-    );
-    final serverUrl = creds['serverUrl']!;
-    final token = creds['token']!;
+    try {
+      final creds = await fetchJoinCredentials(
+        roomName: roomName,
+        identity: identity,
+        participantName: participantName,
+      );
+      final serverUrl = creds['serverUrl']!;
+      final token = creds['token']!;
 
-    await room.connect(
-      serverUrl,
-      token,
-      fastConnectOptions: FastConnectOptions(
-        microphone: TrackOption(enabled: true),
-      ),
-    );
-    await room.localParticipant?.setMicrophoneEnabled(true);
+      await room.connect(
+        serverUrl,
+        token,
+        fastConnectOptions: FastConnectOptions(
+          microphone: TrackOption(enabled: true),
+        ),
+      );
+      await room.localParticipant?.setMicrophoneEnabled(true);
+    } catch (e, st) {
+      AppLogService.instance.error('LiveKit room connection failed', e, st);
+      rethrow;
+    }
   }
 }

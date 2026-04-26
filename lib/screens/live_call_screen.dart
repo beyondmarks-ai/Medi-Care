@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:livekit_client/livekit_client.dart';
+import 'package:medicare_ai/screens/app_logs_screen.dart';
+import 'package:medicare_ai/services/app_log_service.dart';
 import 'package:medicare_ai/services/call_session_service.dart';
 import 'package:medicare_ai/services/livekit_call_service.dart';
 
@@ -67,6 +69,7 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
             roomName: widget.roomName,
           );
         } catch (e) {
+          AppLogService.instance.error('Call session create failed', e);
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
@@ -84,6 +87,7 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
         _status = 'Connected in-app call';
       });
     } catch (e) {
+      AppLogService.instance.error('LiveKit connect failed', e);
       if (!mounted) return;
       setState(() {
         _connecting = false;
@@ -140,6 +144,19 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
         backgroundColor: const Color(0xFF0F172A),
         foregroundColor: Colors.white,
         title: Text(widget.headerTitle),
+        actions: [
+          IconButton(
+            tooltip: 'Open app logs',
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const AppLogsScreen(),
+                ),
+              );
+            },
+            icon: const Icon(Icons.receipt_long_rounded),
+          ),
+        ],
       ),
       body: SafeArea(
         child: Padding(
