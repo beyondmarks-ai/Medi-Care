@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:medicare_ai/services/emergency_service.dart';
 import 'package:medicare_ai/theme/portal_extension.dart';
 
-const _dangerLight = Color(0xFFFF8B8B);
 const _danger = Color(0xFFFF4949);
 const _success = Color(0xFF58B95E);
 
@@ -13,18 +12,13 @@ class EmergencyDock extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final px = context.portalX;
+    final cs = context.medicareColorScheme;
     return Container(
       height: 76,
       decoration: BoxDecoration(
         color: px.dock,
         borderRadius: BorderRadius.circular(38),
-        boxShadow: [
-          BoxShadow(
-            color: px.dock.withValues(alpha: 0.45),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
-          ),
-        ],
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.6)),
       ),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -37,19 +31,8 @@ class EmergencyDock extends StatelessWidget {
                 height: 52,
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [_dangerLight, _danger],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
+                  color: _danger,
                   borderRadius: BorderRadius.circular(26),
-                  boxShadow: [
-                    BoxShadow(
-                      color: _danger.withValues(alpha: 0.4),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
                 ),
                 child: const Row(
                   children: [
@@ -120,13 +103,7 @@ class EmergencyDock extends StatelessWidget {
         decoration: BoxDecoration(
           color: cs.surface,
           borderRadius: BorderRadius.circular(32),
-          boxShadow: [
-            BoxShadow(
-              color: cs.shadow.withValues(alpha: 0.2),
-              blurRadius: 40,
-              spreadRadius: 10,
-            ),
-          ],
+          border: Border.all(color: cs.outlineVariant),
         ),
         padding: const EdgeInsets.all(24),
         child: Column(
@@ -246,13 +223,7 @@ class EmergencyDock extends StatelessWidget {
         decoration: BoxDecoration(
           color: cs.surface,
           borderRadius: BorderRadius.circular(32),
-          boxShadow: [
-            BoxShadow(
-              color: _danger.withValues(alpha: 0.2),
-              blurRadius: 40,
-              spreadRadius: 10,
-            ),
-          ],
+          border: Border.all(color: cs.outlineVariant),
         ),
         padding: const EdgeInsets.all(32),
         child: Column(
@@ -299,17 +270,8 @@ class EmergencyDock extends StatelessWidget {
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(vertical: 20),
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [_dangerLight, _danger],
-                  ),
+                  color: _danger,
                   borderRadius: BorderRadius.circular(24),
-                  boxShadow: [
-                    BoxShadow(
-                      color: _danger.withValues(alpha: 0.4),
-                      blurRadius: 15,
-                      offset: const Offset(0, 6),
-                    ),
-                  ],
                 ),
                 child: const Center(
                   child: Text(

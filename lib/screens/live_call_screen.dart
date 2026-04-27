@@ -1,9 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:livekit_client/livekit_client.dart';
-import 'package:medicare_ai/screens/app_logs_screen.dart';
 import 'package:medicare_ai/services/app_log_service.dart';
 import 'package:medicare_ai/services/call_session_service.dart';
 import 'package:medicare_ai/services/livekit_call_service.dart';
+import 'package:medicare_ai/theme/portal_extension.dart';
 
 class LiveCallScreen extends StatefulWidget {
   const LiveCallScreen({
@@ -35,8 +37,12 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
   Room? _room;
   bool _connecting = true;
   bool _micEnabled = true;
+  bool _micBusy = false;
+  bool _ending = false;
   String _status = 'Connecting...';
   String? _callId;
+  Timer? _callTimer;
+  Duration _callElapsed = Duration.zero;
 
   @override
   void initState() {
@@ -46,10 +52,7 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
 
   Future<void> _connect() async {
     final room = Room(
-      roomOptions: const RoomOptions(
-        adaptiveStream: true,
-        dynacast: true,
-      ),
+      roomOptions: const RoomOptions(adaptiveStream: true, dynacast: true),
     );
     _room = room;
     try {
@@ -73,9 +76,7 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text(
-                  'Call connected, but session log failed: $e',
-                ),
+                content: Text('Call connected, but session log failed: $e'),
               ),
             );
           }
@@ -86,6 +87,7 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
         _connecting = false;
         _status = 'Connected in-app call';
       });
+      _startCallTimer();
     } catch (e) {
       AppLogService.instance.error('LiveKit connect failed', e);
       if (!mounted) return;
@@ -112,101 +114,217 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
   }
 
   Future<void> _toggleMic() async {
+    if (_micBusy || _ending) {
+      return;
+    }
     final room = _room;
     if (room == null) return;
     final next = !_micEnabled;
-    await room.localParticipant?.setMicrophoneEnabled(next);
-    if (!mounted) return;
-    setState(() => _micEnabled = next);
+    setState(() => _micBusy = true);
+    try {
+      await room.localParticipant?.setMicrophoneEnabled(next);
+      if (!mounted) return;
+      setState(() => _micEnabled = next);
+    } catch (e) {
+      AppLogService.instance.error('Toggle microphone failed', e);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Could not change microphone state. Try again.'),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _micBusy = false);
+      }
+    }
   }
 
   Future<void> _hangUp() async {
-    await _room?.disconnect();
-    final id = _callId;
-    if (id != null) {
-      await CallSessionService.instance.endSession(callId: id);
+    if (_ending) {
+      return;
     }
-    if (!mounted) return;
-    Navigator.of(context).pop();
+    _callTimer?.cancel();
+    setState(() {
+      _ending = true;
+      _status = 'Ending call...';
+    });
+    // Close UI immediately so the user does not feel stuck waiting for
+    // network/session cleanup.
+    if (mounted) {
+      Navigator.of(context).pop();
+    }
+    final room = _room;
+    _room = null;
+    final id = _callId;
+    _callId = null;
+    unawaited(_finalizeHangUp(room: room, callId: id));
+  }
+
+  Future<void> _finalizeHangUp({Room? room, String? callId}) async {
+    try {
+      await room?.disconnect().timeout(const Duration(seconds: 6));
+    } catch (e) {
+      AppLogService.instance.error('Room disconnect failed during hang-up', e);
+    }
+    if (callId != null) {
+      try {
+        await CallSessionService.instance
+            .endSession(callId: callId)
+            .timeout(const Duration(seconds: 8));
+      } catch (e) {
+        AppLogService.instance.error(
+          'Call session end failed during hang-up',
+          e,
+        );
+      }
+    }
   }
 
   @override
   void dispose() {
+    _callTimer?.cancel();
     _room?.dispose();
     super.dispose();
   }
 
+  void _startCallTimer() {
+    _callTimer?.cancel();
+    _callTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) {
+        return;
+      }
+      setState(() => _callElapsed += const Duration(seconds: 1));
+    });
+  }
+
+  String _formatElapsed(Duration d) {
+    final mm = d.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final ss = d.inSeconds.remainder(60).toString().padLeft(2, '0');
+    final hh = d.inHours;
+    if (hh > 0) {
+      return '${hh.toString().padLeft(2, '0')}:$mm:$ss';
+    }
+    return '$mm:$ss';
+  }
+
   @override
   Widget build(BuildContext context) {
+    final cs = context.medicareColorScheme;
+    final isConnected = !_connecting && _status == 'Connected in-app call';
     return Scaffold(
-      backgroundColor: const Color(0xFF0F172A),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF0F172A),
-        foregroundColor: Colors.white,
-        title: Text(widget.headerTitle),
-        actions: [
-          IconButton(
-            tooltip: 'Open app logs',
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (_) => const AppLogsScreen(),
-                ),
-              );
-            },
-            icon: const Icon(Icons.receipt_long_rounded),
-          ),
-        ],
-      ),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      appBar: _connecting
+          ? null
+          : AppBar(
+              backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+              foregroundColor: cs.onSurface,
+              title: Text(widget.headerTitle),
+            ),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            children: [
-              const SizedBox(height: 32),
-              const CircleAvatar(
-                radius: 44,
-                backgroundColor: Color(0xFF1D4ED8),
-                child: Icon(Icons.call_rounded, color: Colors.white, size: 36),
-              ),
-              const SizedBox(height: 18),
-              Text(
-                _status,
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: Colors.white, fontSize: 16),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                'Room: ${widget.roomName}',
-                style: const TextStyle(color: Color(0xFF9CA3AF), fontSize: 12),
-              ),
-              const Spacer(),
-              if (_connecting) const CircularProgressIndicator(color: Colors.white),
-              if (!_connecting)
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+        child: _connecting
+            ? Center(
+                child: SizedBox(
+                  width: 36,
+                  height: 36,
+                  child: CircularProgressIndicator(
+                    color: cs.primary,
+                    strokeWidth: 3,
+                  ),
+                ),
+              )
+            : Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
                   children: [
-                    FilledButton.icon(
-                      onPressed: _toggleMic,
-                      icon: Icon(_micEnabled ? Icons.mic : Icons.mic_off),
-                      label: Text(_micEnabled ? 'Mute' : 'Unmute'),
+                    const SizedBox(height: 22),
+                    CircleAvatar(
+                      radius: 44,
+                      backgroundColor: cs.primaryContainer,
+                      child: Icon(Icons.call_rounded, color: cs.primary, size: 36),
                     ),
-                    const SizedBox(width: 14),
-                    FilledButton.icon(
-                      style: FilledButton.styleFrom(
-                        backgroundColor: const Color(0xFFDC2626),
-                        foregroundColor: Colors.white,
+                    const SizedBox(height: 18),
+                    Text(
+                      widget.participantName,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: cs.onSurface,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w800,
                       ),
-                      onPressed: _hangUp,
-                      icon: const Icon(Icons.call_end_rounded),
-                      label: const Text('End'),
                     ),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: isConnected
+                            ? const Color(0xFFE8F8EF)
+                            : cs.surfaceContainerHighest,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Text(
+                        isConnected ? 'Connected' : 'Unavailable',
+                        style: TextStyle(
+                          color: isConnected
+                              ? const Color(0xFF1C7C45)
+                              : cs.onSurfaceVariant,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      isConnected ? _formatElapsed(_callElapsed) : _status,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: cs.onSurfaceVariant, fontSize: 15),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Secure in-app call',
+                      style: TextStyle(color: cs.onSurfaceVariant, fontSize: 12),
+                    ),
+                    const Spacer(),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Expanded(
+                          child: FilledButton.icon(
+                            style: FilledButton.styleFrom(
+                              backgroundColor: cs.primary,
+                              foregroundColor: cs.onPrimary,
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                            ),
+                            onPressed: _toggleMic,
+                            icon: Icon(_micEnabled ? Icons.mic : Icons.mic_off),
+                            label: Text(
+                              _micBusy
+                                  ? 'Updating...'
+                                  : (_micEnabled ? 'Mute mic' : 'Unmute mic'),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: FilledButton.icon(
+                            style: FilledButton.styleFrom(
+                              backgroundColor: cs.error,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                            ),
+                            onPressed: _ending ? null : _hangUp,
+                            icon: const Icon(Icons.call_end_rounded),
+                            label: Text(_ending ? 'Ending...' : 'End call'),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
                   ],
                 ),
-              const SizedBox(height: 36),
-            ],
-          ),
-        ),
+              ),
       ),
     );
   }

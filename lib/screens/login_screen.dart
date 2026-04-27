@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:medicare_ai/screens/app_logs_screen.dart';
 import 'package:medicare_ai/screens/dashboard_screen.dart';
 import 'package:medicare_ai/screens/doctor_dashboard_screen.dart';
 import 'package:medicare_ai/screens/signup_screen.dart';
@@ -9,7 +8,6 @@ import 'package:medicare_ai/services/firebase_auth_service.dart';
 import 'package:medicare_ai/services/firebase_profile_service.dart';
 import 'package:medicare_ai/services/push_notification_service.dart';
 import 'package:medicare_ai/theme/portal_extension.dart';
-import 'package:medicare_ai/widgets/emergency_dock.dart';
 import 'package:medicare_ai/widgets/theme_mode_toggle.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -23,16 +21,13 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
 
-  void _openDashboardPatient() {
-    Navigator.of(context).pushReplacement(
-      PageRouteBuilder(
-        pageBuilder: (context, a, s) => const DashboardScreen(),
-        transitionsBuilder: (context, animation, s, child) {
-          return FadeTransition(opacity: animation, child: child);
-        },
-        transitionDuration: const Duration(milliseconds: 500),
-      ),
-    );
+  String _timeSalute() {
+    final hour = DateTime.now().toUtc().add(
+      const Duration(hours: 5, minutes: 30),
+    ).hour;
+    if (hour >= 5 && hour < 12) return 'Good morning';
+    if (hour >= 12 && hour < 17) return 'Good afternoon';
+    return 'Good evening';
   }
 
   Future<void> _signIn() async {
@@ -75,6 +70,7 @@ class _LoginScreenState extends State<LoginScreen> {
           MaterialPageRoute<void>(
             builder: (_) => DashboardScreen(
               patientId: uniqueId,
+              patientName: profile?['name'] as String?,
               assignedDoctor: profile?['assignedDoctorName'] as String?,
               assignedDoctorId: profile?['assignedDoctorId'] as String?,
             ),
@@ -130,12 +126,6 @@ class _LoginScreenState extends State<LoginScreen> {
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
                                 color: cs.surface,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: cs.shadow.withValues(alpha: 0.08),
-                                    blurRadius: 10,
-                                  )
-                                ],
                               ),
                               child: Image.asset('assets/logo.png', fit: BoxFit.contain),
                             ),
@@ -165,49 +155,14 @@ class _LoginScreenState extends State<LoginScreen> {
                         Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            TextButton(
-                              onPressed: _openDashboardPatient,
-                              style: TextButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 6, vertical: 8),
-                                minimumSize: Size.zero,
-                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                              ),
-                              child: Text(
-                                'Skip',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                  color: cs.primary,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 6),
                             const ThemeModeToggle(size: 0.95),
-                            const SizedBox(width: 4),
-                            _buildCircularIconButton(
-                              context,
-                              Icons.receipt_long_rounded,
-                              onTap: () {
-                                Navigator.of(context).push(
-                                  MaterialPageRoute<void>(
-                                    builder: (_) => const AppLogsScreen(),
-                                  ),
-                                );
-                              },
-                            ),
-                            const SizedBox(width: 10),
-                            _buildCircularIconButton(
-                              context,
-                              Icons.notifications_outlined,
-                            ),
                           ],
                         )
                       ],
                     ),
                     const SizedBox(height: 40),
                     Text(
-                      'Welcome Back',
+                      '${_timeSalute()}',
                       style: TextStyle(
                         fontSize: 32,
                         fontWeight: FontWeight.bold,
@@ -217,7 +172,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Sign in to access your medical records and connect in an emergency.',
+                      'Sign in to access your medical records and continue your care.',
                       style: TextStyle(
                         fontSize: 15,
                         color: cs.onSurfaceVariant,
@@ -261,25 +216,14 @@ class _LoginScreenState extends State<LoginScreen> {
                         width: double.infinity,
                         height: 72,
                         decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [px.ctaStart, px.ctaEnd],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
+                          color: cs.primary,
                           borderRadius: BorderRadius.circular(24),
-                          boxShadow: [
-                            BoxShadow(
-                              color: cs.primary.withValues(alpha: 0.28),
-                              blurRadius: 20,
-                              offset: const Offset(0, 8),
-                            )
-                          ],
                         ),
-                        child: const Center(
+                        child: Center(
                           child: Text(
                             'Sign In',
                             style: TextStyle(
-                              color: Colors.white,
+                              color: cs.onPrimary,
                               fontSize: 18,
                               fontWeight: FontWeight.w600,
                             ),
@@ -325,13 +269,6 @@ class _LoginScreenState extends State<LoginScreen> {
                       decoration: BoxDecoration(
                         color: cs.surface,
                         borderRadius: BorderRadius.circular(24),
-                        boxShadow: [
-                          BoxShadow(
-                            color: px.subtleCardShadow,
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
-                          )
-                        ],
                       ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -375,34 +312,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
             ),
-            const Positioned(
-              bottom: 24,
-              left: 24,
-              right: 24,
-              child: EmergencyDock(),
-            ),
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCircularIconButton(
-    BuildContext context,
-    IconData icon, {
-    VoidCallback? onTap,
-  }) {
-    final cs = context.medicareColorScheme;
-    return Material(
-      color: cs.surface,
-      shape: const CircleBorder(),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: SizedBox(
-          height: 48,
-          width: 48,
-          child: Icon(icon, color: cs.onSurface, size: 22),
         ),
       ),
     );
@@ -420,13 +330,6 @@ class _LoginScreenState extends State<LoginScreen> {
       decoration: BoxDecoration(
         color: cs.surface,
         borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: cs.shadow.withValues(alpha: 0.05),
-            blurRadius: 15,
-            offset: const Offset(0, 6),
-          )
-        ],
       ),
       child: TextField(
         controller: controller,

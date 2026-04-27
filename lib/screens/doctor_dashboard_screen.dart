@@ -102,29 +102,35 @@ class DoctorDashboardScreen extends StatelessWidget {
   }
 
   Widget _buildHero(BuildContext context) {
-    final px = context.portalX;
+    final cs = context.medicareColorScheme;
     final doctor = _currentDoctor();
     final count = CareAssignmentService.instance
         .patientsForDoctor(doctor.id)
         .length;
+    final hour = DateTime.now().toUtc().add(
+      const Duration(hours: 5, minutes: 30),
+    ).hour;
+    final salute = hour >= 5 && hour < 12
+        ? 'Good morning'
+        : hour >= 12 && hour < 17
+        ? 'Good afternoon'
+        : 'Good evening';
+    final displayName = (doctorName ?? doctor.name).trim();
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [px.ctaStart, px.ctaEnd],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        color: cs.surface,
         borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: cs.outlineVariant),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Welcome, Doctor',
+          Text(
+            '$salute, $displayName',
             style: TextStyle(
-              color: Colors.white,
+              color: cs.primary,
               fontSize: 14,
               fontWeight: FontWeight.w600,
             ),
@@ -132,16 +138,20 @@ class DoctorDashboardScreen extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             count == 1 ? '1 assigned patient' : '$count assigned patients',
-            style: const TextStyle(
-              color: Colors.white,
+            style: TextStyle(
+              color: cs.onSurface,
               fontSize: 24,
               fontWeight: FontWeight.bold,
             ),
           ),
           const SizedBox(height: 6),
-          const Text(
+          Text(
             'Review assigned patients, start secure calls, and prepare pharmacy prescriptions.',
-            style: TextStyle(color: Colors.white, fontSize: 13, height: 1.35),
+            style: TextStyle(
+              color: cs.onSurfaceVariant,
+              fontSize: 13,
+              height: 1.35,
+            ),
           ),
         ],
       ),

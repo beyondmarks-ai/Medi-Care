@@ -51,18 +51,33 @@ class _IncomingCallListenerState extends State<IncomingCallListener> {
       final data = doc.data();
       final roomName = (data['roomName'] as String?) ?? '';
       final callerUid = (data['callerUid'] as String?) ?? '';
+      final callerRole = ((data['callerRole'] as String?) ?? '').trim();
       if (roomName.trim().isEmpty || callerUid.trim().isEmpty) {
         continue;
       }
+      final callerName = await _resolveCallerName(callerUid);
+      final titleName = _displayCallerName(
+        callerName: callerName,
+        callerRole: callerRole,
+      );
       _dialogOpen = true;
-      final accept = await _showIncomingCallDialog();
+      final accept = await _showIncomingCallDialog(
+        callerName: titleName,
+        callerRole: callerRole,
+      );
       _dialogOpen = false;
       if (!mounted) return;
       if (!accept) {
-        await CallSessionService.instance.updateStatus(callId: doc.id, status: 'declined');
+        await CallSessionService.instance.updateStatus(
+          callId: doc.id,
+          status: 'declined',
+        );
         continue;
       }
-      await CallSessionService.instance.updateStatus(callId: doc.id, status: 'accepted');
+      await CallSessionService.instance.updateStatus(
+        callId: doc.id,
+        status: 'accepted',
+      );
       if (!mounted) return;
       final calleeUid = FirebaseAuth.instance.currentUser?.uid ?? '';
       await Navigator.of(context).push(
@@ -82,24 +97,114 @@ class _IncomingCallListenerState extends State<IncomingCallListener> {
     }
   }
 
-  Future<bool> _showIncomingCallDialog() async {
+  Future<String?> _resolveCallerName(String callerUid) async {
+    try {
+      final snap = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(callerUid)
+          .get();
+      final data = snap.data();
+      final raw = (data?['name'] as String?)?.trim();
+      if (raw == null || raw.isEmpty) {
+        return null;
+      }
+      return raw;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  String _displayCallerName({
+    required String? callerName,
+    required String callerRole,
+  }) {
+    final fallback = callerRole.toLowerCase() == 'doctor' ? 'Doctor' : 'Caller';
+    final base = (callerName == null || callerName.isEmpty)
+        ? fallback
+        : callerName;
+    if (callerRole.toLowerCase() == 'doctor' &&
+        !base.toLowerCase().startsWith('dr')) {
+      return 'Dr. $base';
+    }
+    return base;
+  }
+
+  Future<bool> _showIncomingCallDialog({
+    required String callerName,
+    required String callerRole,
+  }) async {
     final result = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
       builder: (dialogContext) {
-        return AlertDialog(
-          title: const Text('Incoming call'),
-          content: const Text('Someone is calling you. Join now?'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('Decline'),
+        final cs = Theme.of(dialogContext).colorScheme;
+        final title = callerRole.toLowerCase() == 'doctor'
+            ? 'Dr Medicare'
+            : 'Medicare call';
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  height: 64,
+                  width: 64,
+                  decoration: BoxDecoration(
+                    color: cs.primaryContainer,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(Icons.call_rounded, size: 34, color: cs.primary),
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                    color: cs.onSurface,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  callerName,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: cs.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Incoming call',
+                  style: TextStyle(fontSize: 13, color: cs.onSurfaceVariant),
+                ),
+                const SizedBox(height: 18),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () => Navigator.of(dialogContext).pop(false),
+                        icon: const Icon(Icons.call_end_rounded),
+                        label: const Text('Decline'),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: FilledButton.icon(
+                        onPressed: () => Navigator.of(dialogContext).pop(true),
+                        icon: const Icon(Icons.call_rounded),
+                        label: const Text('Receive'),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
-            FilledButton(
-              onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: const Text('Accept'),
-            ),
-          ],
+          ),
         );
       },
     );

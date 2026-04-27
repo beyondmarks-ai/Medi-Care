@@ -20,11 +20,13 @@ class DashboardScreen extends StatelessWidget {
   const DashboardScreen({
     super.key,
     this.patientId,
+    this.patientName,
     this.assignedDoctor,
     this.assignedDoctorId,
   });
 
   final String? patientId;
+  final String? patientName;
   final String? assignedDoctor;
   final String? assignedDoctorId;
 
@@ -178,12 +180,7 @@ class DashboardScreen extends StatelessWidget {
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     color: cs.surface,
-                    boxShadow: [
-                      BoxShadow(
-                        color: cs.shadow.withValues(alpha: 0.1),
-                        blurRadius: 10,
-                      ),
-                    ],
+                    border: Border.all(color: cs.outlineVariant),
                   ),
                   child: Image.asset('assets/logo.png', fit: BoxFit.contain),
                 ),
@@ -261,12 +258,8 @@ class DashboardScreen extends StatelessWidget {
 
   Widget _buildGreeting(BuildContext context) {
     final cs = context.medicareColorScheme;
-    final hour = DateTime.now().hour;
-    final salute = hour < 12
-        ? 'Good morning'
-        : hour < 17
-        ? 'Good afternoon'
-        : 'Good evening';
+    final salute = _timeSalute();
+    final displayName = _patientDisplayName();
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 28, 24, 20),
@@ -274,16 +267,7 @@ class DashboardScreen extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            salute,
-            style: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w600,
-              color: cs.onSurfaceVariant,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'Your care dashboard',
+            '$salute, $displayName',
             style: TextStyle(
               fontSize: 30,
               fontWeight: FontWeight.bold,
@@ -305,8 +289,28 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
+  String _timeSalute() {
+    final hour = DateTime.now().toUtc().add(
+      const Duration(hours: 5, minutes: 30),
+    ).hour;
+    if (hour >= 5 && hour < 12) return 'Good morning';
+    if (hour >= 12 && hour < 17) return 'Good afternoon';
+    return 'Good evening';
+  }
+
+  String _patientDisplayName() {
+    final explicit = patientName?.trim();
+    if (explicit != null && explicit.isNotEmpty) return explicit;
+    final fromCache = patientId == null
+        ? null
+        : CareAssignmentService.instance.patientById(patientId!);
+    final cachedName = fromCache?.name.trim();
+    if (cachedName != null && cachedName.isNotEmpty) return cachedName;
+    if (patientId != null && patientId!.trim().isNotEmpty) return 'Patient $patientId';
+    return 'Patient';
+  }
+
   Widget _buildHeroCard(BuildContext context) {
-    final px = context.portalX;
     final cs = context.medicareColorScheme;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -314,19 +318,9 @@ class DashboardScreen extends StatelessWidget {
         width: double.infinity,
         padding: const EdgeInsets.all(22),
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [px.ctaStart, px.ctaEnd],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
+          color: cs.surface,
           borderRadius: BorderRadius.circular(24),
-          boxShadow: [
-            BoxShadow(
-              color: cs.primary.withValues(alpha: 0.3),
-              blurRadius: 22,
-              offset: const Offset(0, 10),
-            ),
-          ],
+          border: Border.all(color: cs.outlineVariant),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -339,13 +333,13 @@ class DashboardScreen extends StatelessWidget {
                     vertical: 6,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.22),
+                    color: cs.primaryContainer,
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  child: const Text(
+                  child: Text(
                     'Care hub',
                     style: TextStyle(
-                      color: Colors.white,
+                      color: cs.primary,
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
                     ),
@@ -354,7 +348,7 @@ class DashboardScreen extends StatelessWidget {
                 const Spacer(),
                 Icon(
                   Icons.trending_up_rounded,
-                  color: Colors.white.withValues(alpha: 0.95),
+                  color: cs.primary,
                 ),
               ],
             ),
@@ -362,7 +356,7 @@ class DashboardScreen extends StatelessWidget {
             Text(
               assignedDoctor == null ? 'Get started' : 'Connected care',
               style: TextStyle(
-                color: Colors.white,
+                color: cs.onSurface,
                 fontSize: 28,
                 fontWeight: FontWeight.bold,
                 letterSpacing: -0.5,
@@ -374,7 +368,7 @@ class DashboardScreen extends StatelessWidget {
                   ? 'Choose your doctor and keep your health tools close.'
                   : 'Assigned to $assignedDoctor. Use the actions below for care support.',
               style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.88),
+                color: cs.onSurfaceVariant,
                 fontSize: 14,
                 height: 1.4,
               ),
@@ -384,8 +378,8 @@ class DashboardScreen extends StatelessWidget {
               width: double.infinity,
               child: FilledButton(
                 style: FilledButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  foregroundColor: cs.primary,
+                  backgroundColor: cs.primary,
+                  foregroundColor: cs.onPrimary,
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
@@ -412,20 +406,24 @@ class DashboardScreen extends StatelessWidget {
 
   Widget _buildPatientIdentityCard(BuildContext context) {
     final cs = context.medicareColorScheme;
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final bg = dark ? const Color(0xFF1B2A23) : const Color(0xFFEFFFF4);
+    final border = dark ? const Color(0xFF3D8B64) : const Color(0xFF78C593);
+    final accent = dark ? const Color(0xFF8DE3B1) : const Color(0xFF1D7F45);
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: const Color(0xFFEFFFF4),
+          color: bg,
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: const Color(0xFF78C593), width: 1.2),
+          border: Border.all(color: border, width: 1.2),
         ),
         child: Row(
           children: [
-            const Icon(
+            Icon(
               Icons.verified_user_rounded,
-              color: Color(0xFF1D7F45),
+              color: accent,
               size: 24,
             ),
             const SizedBox(width: 12),
@@ -435,8 +433,8 @@ class DashboardScreen extends StatelessWidget {
                 children: [
                   Text(
                     'Patient ID: ${patientId!}',
-                    style: const TextStyle(
-                      color: Color(0xFF1D7F45),
+                    style: TextStyle(
+                      color: accent,
                       fontSize: 15,
                       fontWeight: FontWeight.w800,
                     ),
@@ -544,6 +542,7 @@ class DashboardScreen extends StatelessWidget {
         MaterialPageRoute<void>(
           builder: (_) => DashboardScreen(
             patientId: patientId,
+            patientName: patientName,
             assignedDoctor: updated.name,
             assignedDoctorId: updated.id,
           ),

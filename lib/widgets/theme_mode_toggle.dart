@@ -43,15 +43,6 @@ class ThemeModeToggle extends StatelessWidget {
                           color: cs.outlineVariant.withValues(alpha: 0.45),
                           width: 1,
                         ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: isDark
-                                ? Colors.black.withValues(alpha: 0.45)
-                                : cs.primary.withValues(alpha: 0.12),
-                            blurRadius: 10,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
                       ),
                     ),
                     Positioned(
@@ -88,15 +79,9 @@ class ThemeModeToggle extends StatelessWidget {
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             color: isDark ? const Color(0xFF2A2540) : Colors.white,
-                            boxShadow: [
-                              BoxShadow(
-                                color: isDark
-                                    ? Colors.black.withValues(alpha: 0.4)
-                                    : cs.primary.withValues(alpha: 0.28),
-                                blurRadius: 8,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
+                            border: Border.all(
+                              color: cs.outlineVariant.withValues(alpha: 0.6),
+                            ),
                           ),
                           child: AnimatedSwitcher(
                             duration: const Duration(milliseconds: 400),
@@ -156,6 +141,8 @@ class ThemeModeIconButton extends StatelessWidget {
             backgroundColor:
                 cs.secondaryContainer.withValues(alpha: 0.45),
             foregroundColor: cs.onSurface,
+            elevation: 0,
+            shadowColor: Colors.transparent,
             padding: const EdgeInsets.all(10),
             minimumSize: const Size(44, 44),
             tapTargetSize: MaterialTapTargetSize.shrinkWrap,

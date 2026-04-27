@@ -148,32 +148,36 @@ class _HeroInstructionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return DecoratedBox(
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [context.portalX.ctaStart, context.portalX.ctaEnd],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        color: colorScheme.surface,
         borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: colorScheme.outlineVariant),
       ),
-      child: const Padding(
-        padding: EdgeInsets.all(18),
+      child: Padding(
+        padding: const EdgeInsets.all(18),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(Icons.document_scanner_rounded, color: Colors.white, size: 30),
-            SizedBox(height: 12),
+            Icon(
+              Icons.document_scanner_rounded,
+              color: colorScheme.primary,
+              size: 30,
+            ),
+            const SizedBox(height: 12),
             Text(
               'Scan a medicine label',
               style: TextStyle(
-                color: Colors.white,
+                color: colorScheme.onSurface,
                 fontSize: 22,
                 fontWeight: FontWeight.w800,
               ),
             ),
-            SizedBox(height: 6),
+            const SizedBox(height: 6),
             Text(
               'Take a clear photo of the strip or box. Medi AI reads visible text and explains likely use, timing, and safety cautions.',
-              style: TextStyle(color: Colors.white, height: 1.35),
+              style: TextStyle(
+                color: colorScheme.onSurfaceVariant,
+                height: 1.35,
+              ),
             ),
           ],
         ),

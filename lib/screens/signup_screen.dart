@@ -9,7 +9,6 @@ import 'package:medicare_ai/services/firebase_auth_service.dart';
 import 'package:medicare_ai/services/firebase_profile_service.dart';
 import 'package:medicare_ai/services/push_notification_service.dart';
 import 'package:medicare_ai/theme/portal_extension.dart';
-import 'package:medicare_ai/widgets/emergency_dock.dart';
 import 'package:medicare_ai/widgets/theme_mode_toggle.dart';
 
 class SignupScreen extends StatefulWidget {
@@ -31,6 +30,32 @@ class _SignupScreenState extends State<SignupScreen> {
   String? _uploadedFile;
   String? _uploadedDoctorId;
   UserRole _selectedRole = UserRole.patient;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController.addListener(_refreshGreeting);
+  }
+
+  void _refreshGreeting() {
+    if (!mounted) return;
+    setState(() {});
+  }
+
+  String _timeSalute() {
+    final hour = DateTime.now().toUtc().add(
+      const Duration(hours: 5, minutes: 30),
+    ).hour;
+    if (hour >= 5 && hour < 12) return 'Good morning';
+    if (hour >= 12 && hour < 17) return 'Good afternoon';
+    return 'Good evening';
+  }
+
+  String _greetingWithName() {
+    final name = _nameController.text.trim();
+    if (name.isEmpty) return _timeSalute();
+    return '${_timeSalute()}, $name';
+  }
 
   void _nextStep() {
     if (_currentStep < 3) {
@@ -130,6 +155,7 @@ class _SignupScreenState extends State<SignupScreen> {
         MaterialPageRoute<void>(
           builder: (_) => DashboardScreen(
             patientId: patientId,
+            patientName: _nameController.text.trim(),
             assignedDoctor: assignedDoctor.name,
             assignedDoctorId: assignedDoctor.id,
           ),
@@ -230,6 +256,8 @@ class _SignupScreenState extends State<SignupScreen> {
               style: FilledButton.styleFrom(
                 backgroundColor: const Color(0xFF1D7F45),
                 foregroundColor: Colors.white,
+                elevation: 0,
+                shadowColor: Colors.transparent,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(14),
                 ),
@@ -274,6 +302,7 @@ class _SignupScreenState extends State<SignupScreen> {
 
   @override
   void dispose() {
+    _nameController.removeListener(_refreshGreeting);
     _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
@@ -303,12 +332,6 @@ class _SignupScreenState extends State<SignupScreen> {
               ),
             ),
             
-            const Positioned(
-              bottom: 24,
-              left: 24,
-              right: 24,
-              child: EmergencyDock(),
-            ),
           ],
         ),
       ),
@@ -325,7 +348,7 @@ class _SignupScreenState extends State<SignupScreen> {
           _buildTopBar('Step 1 of 3'),
           const SizedBox(height: 32),
           Text(
-            'Create Account',
+            _greetingWithName(),
             style: TextStyle(
               fontSize: 32,
               fontWeight: FontWeight.bold,
@@ -597,10 +620,6 @@ class _SignupScreenState extends State<SignupScreen> {
           decoration: BoxDecoration(
             color: selected ? accent.withValues(alpha: 0.16) : cs.surface,
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: selected ? accent : cs.outline.withValues(alpha: 0.3),
-              width: selected ? 1.8 : 1,
-            ),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -655,13 +674,6 @@ class _SignupScreenState extends State<SignupScreen> {
             decoration: BoxDecoration(
               color: cs.surface,
               shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: cs.shadow.withValues(alpha: 0.06),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                )
-              ],
             ),
             child: Padding(
               padding: const EdgeInsets.only(left: 6.0),
@@ -687,31 +699,20 @@ class _SignupScreenState extends State<SignupScreen> {
   }
 
   Widget _buildPrimaryButton(String text) {
-    final px = context.portalX;
     final cs = context.medicareColorScheme;
+    final px = context.portalX;
     return Container(
       width: double.infinity,
       height: 72,
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [px.ctaStart, px.ctaEnd],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        color: cs.primary,
         borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: cs.primary.withValues(alpha: 0.3),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          )
-        ],
       ),
       child: Center(
         child: Text(
           text,
-          style: const TextStyle(
-            color: Colors.white,
+          style: TextStyle(
+            color: cs.onPrimary,
             fontSize: 18,
             fontWeight: FontWeight.w600,
           ),
@@ -731,13 +732,6 @@ class _SignupScreenState extends State<SignupScreen> {
       decoration: BoxDecoration(
         color: cs.surface,
         borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: cs.shadow.withValues(alpha: 0.05),
-            blurRadius: 15,
-            offset: const Offset(0, 6),
-          )
-        ],
       ),
       child: TextField(
         controller: controller,
@@ -774,13 +768,6 @@ class _SignupScreenState extends State<SignupScreen> {
       decoration: BoxDecoration(
         color: cs.surface,
         borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: cs.shadow.withValues(alpha: 0.05),
-            blurRadius: 15,
-            offset: const Offset(0, 6),
-          )
-        ],
       ),
       child: TextField(
         maxLines: 4,
@@ -844,13 +831,9 @@ class _SignupScreenState extends State<SignupScreen> {
                     decoration: BoxDecoration(
                       color: cs.surface,
                       shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFF58B95E).withValues(alpha: 0.2),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        )
-                      ],
+                      border: Border.all(
+                        color: const Color(0xFF58B95E).withValues(alpha: 0.35),
+                      ),
                     ),
                     child: const Icon(
                       Icons.check_circle_rounded,
@@ -897,13 +880,9 @@ class _SignupScreenState extends State<SignupScreen> {
                     decoration: BoxDecoration(
                       color: cs.surface,
                       shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: cs.primary.withValues(alpha: 0.15),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        )
-                      ],
+                      border: Border.all(
+                        color: cs.outlineVariant.withValues(alpha: 0.8),
+                      ),
                     ),
                     child: Icon(
                       Icons.cloud_upload_rounded,
@@ -946,12 +925,7 @@ class _SignupScreenState extends State<SignupScreen> {
         decoration: BoxDecoration(
           color: cs.surface,
           borderRadius: BorderRadius.circular(32),
-          boxShadow: [
-            BoxShadow(
-              color: cs.shadow.withValues(alpha: 0.15),
-              blurRadius: 20,
-            )
-          ],
+          border: Border.all(color: cs.outlineVariant),
         ),
         padding: const EdgeInsets.all(24),
         child: Column(

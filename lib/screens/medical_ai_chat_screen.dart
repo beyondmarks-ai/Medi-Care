@@ -358,13 +358,9 @@ class _MedicalAiChatScreenState extends State<MedicalAiChatScreen> {
                       decoration: BoxDecoration(
                         color: bubbleColor,
                         borderRadius: BorderRadius.circular(14),
-                        boxShadow: [
-                          BoxShadow(
-                            color: cs.shadow.withValues(alpha: 0.07),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
+                        border: Border.all(
+                          color: cs.outlineVariant.withValues(alpha: 0.55),
+                        ),
                       ),
                       child: isUser
                           ? Text(
@@ -460,9 +456,7 @@ class _MedicalAiChatScreenState extends State<MedicalAiChatScreen> {
                     duration: const Duration(milliseconds: 220),
                     curve: Curves.easeOutCubic,
                     decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [px.ctaStart, px.ctaEnd],
-                      ),
+                      color: cs.primary,
                       borderRadius: BorderRadius.circular(14),
                     ),
                     child: IconButton(
