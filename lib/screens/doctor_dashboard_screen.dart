@@ -1,10 +1,8 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:medicare_ai/screens/app_logs_screen.dart';
 import 'package:medicare_ai/screens/doctor_send_pharmacy_screen.dart';
 import 'package:medicare_ai/screens/live_call_screen.dart';
 import 'package:medicare_ai/screens/login_screen.dart';
-import 'package:medicare_ai/services/app_log_service.dart';
 import 'package:medicare_ai/services/care_assignment_service.dart';
 import 'package:medicare_ai/services/livekit_call_service.dart';
 import 'package:medicare_ai/theme/portal_extension.dart';
@@ -12,11 +10,7 @@ import 'package:medicare_ai/widgets/incoming_call_listener.dart';
 import 'package:medicare_ai/widgets/theme_mode_toggle.dart';
 
 class DoctorDashboardScreen extends StatelessWidget {
-  const DoctorDashboardScreen({
-    super.key,
-    this.doctorId,
-    this.doctorName,
-  });
+  const DoctorDashboardScreen({super.key, this.doctorId, this.doctorName});
 
   final String? doctorId;
   final String? doctorName;
@@ -28,60 +22,36 @@ class DoctorDashboardScreen extends StatelessWidget {
       currentRole: 'doctor',
       participantName: doctorName ?? doctor.name,
       child: Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildHeader(context),
-              const SizedBox(height: 28),
-              _buildHero(context),
-              const SizedBox(height: 24),
-              _sectionTitle(context, 'Today at a glance'),
-              const SizedBox(height: 12),
-              _buildMetricRow(context),
-              const SizedBox(height: 24),
-              _sectionTitle(context, 'Priority queue'),
-              const SizedBox(height: 12),
-              _DoctorTaskTile(
-                icon: Icons.monitor_heart_outlined,
-                title: 'High-risk vitals alert',
-                subtitle: 'Rajat S. - BP trend above baseline',
-                action: 'Review now',
-              ),
-              const SizedBox(height: 10),
-              _DoctorTaskTile(
-                icon: Icons.assignment_rounded,
-                title: 'Pending report sign-off',
-                subtitle: '3 lab reports need validation',
-                action: 'Open reports',
-              ),
-              const SizedBox(height: 10),
-              _DoctorTaskTile(
-                icon: Icons.video_call_rounded,
-                title: 'Teleconsultation in 20 min',
-                subtitle: 'Neha P. - follow-up consultation',
-                action: 'Prepare',
-              ),
-              const SizedBox(height: 24),
-              _sectionTitle(context, 'Assigned patients'),
-              const SizedBox(height: 12),
-              ..._assignedPatientsForCurrentDoctor().map(
-                (patient) => Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: _AssignedPatientTile(
-                    patient: patient,
-                    onTap: () => _showPatientDetailsSheet(context, patient),
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        body: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildHeader(context),
+                const SizedBox(height: 24),
+                _buildHero(context),
+                const SizedBox(height: 16),
+                _buildPrescriptionAction(context),
+                const SizedBox(height: 24),
+                _sectionTitle(context, 'Assigned patients'),
+                const SizedBox(height: 12),
+                ..._assignedPatientsForCurrentDoctor().map(
+                  (patient) => Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: _AssignedPatientTile(
+                      patient: patient,
+                      onTap: () => _showPatientDetailsSheet(context, patient),
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
-    ));
+    );
   }
 
   Widget _buildHeader(BuildContext context) {
@@ -92,10 +62,7 @@ class DoctorDashboardScreen extends StatelessWidget {
         Container(
           height: 48,
           width: 48,
-          decoration: BoxDecoration(
-            color: cs.surface,
-            shape: BoxShape.circle,
-          ),
+          decoration: BoxDecoration(color: cs.surface, shape: BoxShape.circle),
           child: Icon(Icons.local_hospital_rounded, color: cs.primary),
         ),
         const SizedBox(width: 12),
@@ -119,33 +86,6 @@ class DoctorDashboardScreen extends StatelessWidget {
           ),
         ),
         const ThemeModeIconButton(),
-        IconButton(
-          onPressed: () {
-            Navigator.of(context).push(
-              MaterialPageRoute<void>(
-                builder: (_) => const DoctorSendPharmacyScreen(),
-              ),
-            );
-          },
-          icon: const Icon(Icons.medication_liquid_outlined),
-          tooltip: 'Send medicine to a patient’s pharmacy cart',
-        ),
-        IconButton(
-          onPressed: () => _testCallBackend(context),
-          icon: const Icon(Icons.health_and_safety_rounded),
-          tooltip: 'Verifies the cloud token endpoint; does not start a call or notify anyone.',
-        ),
-        IconButton(
-          onPressed: () {
-            Navigator.of(context).push(
-              MaterialPageRoute<void>(
-                builder: (_) => const AppLogsScreen(),
-              ),
-            );
-          },
-          icon: const Icon(Icons.receipt_long_rounded),
-          tooltip: 'Open app logs',
-        ),
         const SizedBox(width: 6),
         IconButton(
           onPressed: () {
@@ -163,6 +103,10 @@ class DoctorDashboardScreen extends StatelessWidget {
 
   Widget _buildHero(BuildContext context) {
     final px = context.portalX;
+    final doctor = _currentDoctor();
+    final count = CareAssignmentService.instance
+        .patientsForDoctor(doctor.id)
+        .length;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
@@ -174,10 +118,10 @@ class DoctorDashboardScreen extends StatelessWidget {
         ),
         borderRadius: BorderRadius.circular(22),
       ),
-      child: const Column(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
+          const Text(
             'Welcome, Doctor',
             style: TextStyle(
               color: Colors.white,
@@ -185,44 +129,84 @@ class DoctorDashboardScreen extends StatelessWidget {
               fontWeight: FontWeight.w600,
             ),
           ),
-          SizedBox(height: 8),
+          const SizedBox(height: 8),
           Text(
-            '12 patients waiting for review',
-            style: TextStyle(
+            count == 1 ? '1 assigned patient' : '$count assigned patients',
+            style: const TextStyle(
               color: Colors.white,
               fontSize: 24,
               fontWeight: FontWeight.bold,
             ),
           ),
-          SizedBox(height: 6),
-          Text(
-            'Prioritize urgent flags, approve reports, and complete consults.',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 13,
-              height: 1.35,
-            ),
+          const SizedBox(height: 6),
+          const Text(
+            'Review assigned patients, start secure calls, and prepare pharmacy prescriptions.',
+            style: TextStyle(color: Colors.white, fontSize: 13, height: 1.35),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildMetricRow(BuildContext context) {
-    return Row(
-      children: const [
-        Expanded(
-          child: _MetricCard(label: 'Consults', value: '8', icon: Icons.groups_rounded),
+  Widget _buildPrescriptionAction(BuildContext context) {
+    final cs = context.medicareColorScheme;
+    return Material(
+      color: cs.surface,
+      borderRadius: BorderRadius.circular(18),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(18),
+        onTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => const DoctorSendPharmacyScreen(),
+            ),
+          );
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: cs.primaryContainer,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(
+                  Icons.medication_liquid_outlined,
+                  color: cs.primary,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Create prescription',
+                      style: TextStyle(
+                        color: cs.onSurface,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 16,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Build a draft with multiple medicines and send it to a patient cart.',
+                      style: TextStyle(
+                        color: cs.onSurfaceVariant,
+                        fontSize: 13,
+                        height: 1.35,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(Icons.chevron_right_rounded, color: cs.onSurfaceVariant),
+            ],
+          ),
         ),
-        SizedBox(width: 10),
-        Expanded(
-          child: _MetricCard(label: 'Alerts', value: '3', icon: Icons.warning_amber_rounded),
-        ),
-        SizedBox(width: 10),
-        Expanded(
-          child: _MetricCard(label: 'Reports', value: '5', icon: Icons.description_rounded),
-        ),
-      ],
+      ),
     );
   }
 
@@ -342,10 +326,7 @@ class DoctorDashboardScreen extends StatelessWidget {
               Text(
                 'Condition: ${patient.condition}',
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: cs.onSurfaceVariant,
-                  fontSize: 13,
-                ),
+                style: TextStyle(color: cs.onSurfaceVariant, fontSize: 13),
               ),
               const SizedBox(height: 18),
               SizedBox(
@@ -370,17 +351,17 @@ class DoctorDashboardScreen extends StatelessWidget {
                   width: double.infinity,
                   child: FilledButton.tonalIcon(
                     onPressed: () {
-                      final pre = CareAssignmentService.instance
-                          .patientById(patient.patientId);
+                      final pre = CareAssignmentService.instance.patientById(
+                        patient.patientId,
+                      );
                       Navigator.of(sheetContext).pop();
                       if (!context.mounted) {
                         return;
                       }
                       Navigator.of(context).push(
                         MaterialPageRoute<void>(
-                          builder: (_) => DoctorSendPharmacyScreen(
-                            preSelectedPatient: pre,
-                          ),
+                          builder: (_) =>
+                              DoctorSendPharmacyScreen(preSelectedPatient: pre),
                         ),
                       );
                     },
@@ -423,10 +404,13 @@ class DoctorDashboardScreen extends StatelessWidget {
       doctorId: doctor.id,
     );
     final myUid = FirebaseAuth.instance.currentUser?.uid ?? '';
-    final patientUid = CareAssignmentService.instance.patientUidById(patient.patientId) ?? '';
+    final patientUid =
+        CareAssignmentService.instance.patientUidById(patient.patientId) ?? '';
     if (myUid.isEmpty || patientUid.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Call mapping not ready yet. Please refresh.')),
+        const SnackBar(
+          content: Text('Call mapping not ready yet. Please refresh.'),
+        ),
       );
       return;
     }
@@ -442,50 +426,6 @@ class DoctorDashboardScreen extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  Future<void> _testCallBackend(BuildContext context) async {
-    final doctor = _currentDoctor();
-    final myUid = FirebaseAuth.instance.currentUser?.uid ?? '';
-    if (myUid.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please re-login and try again.')),
-      );
-      return;
-    }
-    final samplePatientId = 'TESTPATIENT';
-    final roomName = LiveKitCallService.buildRoomName(
-      patientId: samplePatientId,
-      doctorId: doctor.id,
-    );
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Checking token service...')),
-    );
-    try {
-      final creds = await LiveKitCallService.fetchJoinCredentials(
-        roomName: roomName,
-        identity: myUid,
-        participantName: doctor.name,
-      );
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'PASS: token issued for room $roomName\n'
-            'Server: ${creds['serverUrl']}\n\n'
-            'This only checks the API — it does not open WebSockets or notify '
-            'anyone. If a real call shows "invalid API key", the LIVEKIT_* '
-            'Function secrets are wrong or mixed from different projects.',
-          ),
-        ),
-      );
-    } catch (e) {
-      AppLogService.instance.error('Doctor token service test failed', e);
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('FAIL: $e')),
-      );
-    }
   }
 }
 
@@ -516,121 +456,8 @@ class _AssignedPatient {
   }
 }
 
-class _MetricCard extends StatelessWidget {
-  const _MetricCard({
-    required this.label,
-    required this.value,
-    required this.icon,
-  });
-
-  final String label;
-  final String value;
-  final IconData icon;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = context.medicareColorScheme;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-      decoration: BoxDecoration(
-        color: cs.surface,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, color: cs.primary, size: 20),
-          const SizedBox(height: 10),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-              color: cs.onSurface,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              color: cs.onSurfaceVariant,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _DoctorTaskTile extends StatelessWidget {
-  const _DoctorTaskTile({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.action,
-  });
-
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final String action;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = context.medicareColorScheme;
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: cs.surface,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: cs.primaryContainer,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(icon, color: cs.primary),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontWeight: FontWeight.w700,
-                    color: cs.onSurface,
-                    fontSize: 14,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  subtitle,
-                  style: TextStyle(
-                    color: cs.onSurfaceVariant,
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          TextButton(onPressed: () {}, child: Text(action)),
-        ],
-      ),
-    );
-  }
-}
-
 class _AssignedPatientTile extends StatelessWidget {
-  const _AssignedPatientTile({
-    required this.patient,
-    required this.onTap,
-  });
+  const _AssignedPatientTile({required this.patient, required this.onTap});
 
   final _AssignedPatient patient;
   final VoidCallback onTap;

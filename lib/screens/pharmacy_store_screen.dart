@@ -201,17 +201,10 @@ class _PharmacyStoreScreenState extends State<PharmacyStoreScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
-                    child: _InfoBanner(
-                      text:
-                          'The box below filters this app’s catalog and (with 2+ characters) also searches U.S. FDA product labels on openFDA. Not a prescription service. Verify with a pharmacist.',
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
                     child: TextField(
                       decoration: InputDecoration(
-                        hintText: 'Search catalog + FDA (e.g. ibuprofen, Advil) — min 2 letters for FDA',
+                        hintText: 'Search medicines or FDA labels',
                         prefixIcon: const Icon(Icons.search_rounded),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -234,7 +227,8 @@ class _PharmacyStoreScreenState extends State<PharmacyStoreScreen> {
                             child: FilterChip(
                               label: const Text('All'),
                               selected: _category == null,
-                              onSelected: (_) => setState(() => _category = null),
+                              onSelected: (_) =>
+                                  setState(() => _category = null),
                             ),
                           ),
                           ...cats.map(
@@ -243,8 +237,9 @@ class _PharmacyStoreScreenState extends State<PharmacyStoreScreen> {
                               child: FilterChip(
                                 label: Text(c),
                                 selected: _category == c,
-                                onSelected: (_) =>
-                                    setState(() => _category = c == _category ? null : c),
+                                onSelected: (_) => setState(
+                                  () => _category = c == _category ? null : c,
+                                ),
                               ),
                             ),
                           ),
@@ -343,11 +338,11 @@ class _PharmacyStoreScreenState extends State<PharmacyStoreScreen> {
                                   Text(
                                     'Suggested by ${line.fromDoctor}',
                                     style: TextStyle(
-                                      color: Theme.of(context)
-                                          .colorScheme
-                                          .tertiary,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.tertiary,
                                       fontSize: 12,
-                                      fontWeight: FontWeight.w600,
+                                      fontWeight: FontWeight.w700,
                                     ),
                                   ),
                                 Text(
@@ -357,7 +352,8 @@ class _PharmacyStoreScreenState extends State<PharmacyStoreScreen> {
                                 ),
                               ],
                             ),
-                            isThreeLine: line.fromDoctor != null &&
+                            isThreeLine:
+                                line.fromDoctor != null &&
                                 line.fromDoctor!.trim().isNotEmpty,
                             trailing: Row(
                               mainAxisSize: MainAxisSize.min,
@@ -511,7 +507,10 @@ class _PharmacyStoreScreenState extends State<PharmacyStoreScreen> {
                 ],
                 if (p.extra.isNotEmpty) ...[
                   const SizedBox(height: 12),
-                  const Text('Additional fields', style: TextStyle(fontWeight: FontWeight.w600)),
+                  const Text(
+                    'Additional fields',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
                   const SizedBox(height: 4),
                   ...p.extra.entries.map(
                     (e) => Padding(
@@ -525,9 +524,8 @@ class _PharmacyStoreScreenState extends State<PharmacyStoreScreen> {
                   onPressed: () {
                     Navigator.of(context).push(
                       MaterialPageRoute<void>(
-                        builder: (context) => OpenFdaDrugLabelScreen(
-                          initialQuery: p.name,
-                        ),
+                        builder: (context) =>
+                            OpenFdaDrugLabelScreen(initialQuery: p.name),
                       ),
                     );
                   },
@@ -539,9 +537,9 @@ class _PharmacyStoreScreenState extends State<PharmacyStoreScreen> {
                   onPressed: () {
                     _cart.add(p);
                     Navigator.of(context).pop();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Added: ${p.name}')),
-                    );
+                    ScaffoldMessenger.of(
+                      context,
+                    ).showSnackBar(SnackBar(content: Text('Added: ${p.name}')));
                   },
                   child: const Text('Add to cart'),
                 ),
@@ -596,9 +594,9 @@ class _PharmacySearchBody extends StatelessWidget {
             padding: const EdgeInsets.only(bottom: 8),
             child: Text(
               'In-app catalog',
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w800,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
             ),
           ),
         ],
@@ -635,17 +633,14 @@ class _PharmacySearchBody extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             'U.S. FDA product labels (openFDA)',
-            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w800,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 4),
           Text(
             'Regulatory text from the FDA; tap a row to read. Not a substitute for your package insert.',
-            style: TextStyle(
-              fontSize: 12,
-              color: cs.onSurfaceVariant,
-            ),
+            style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
           ),
           const SizedBox(height: 8),
           for (final label in fdaLabels)
@@ -704,7 +699,9 @@ class _FdaResultTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = context.medicareColorScheme;
-    final title = _displayFdaName(label).isEmpty ? 'FDA label' : _displayFdaName(label);
+    final title = _displayFdaName(label).isEmpty
+        ? 'FDA label'
+        : _displayFdaName(label);
     String sub;
     if (label.genericNames.isNotEmpty) {
       sub = 'Generic: ${label.genericNames.take(2).join(', ')}';
@@ -726,9 +723,7 @@ class _FdaResultTile extends StatelessWidget {
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: cs.primary.withValues(alpha: 0.45),
-            ),
+            border: Border.all(color: cs.primary.withValues(alpha: 0.45)),
           ),
           child: Row(
             children: [
@@ -769,45 +764,8 @@ class _FdaResultTile extends StatelessWidget {
   }
 }
 
-class _InfoBanner extends StatelessWidget {
-  const _InfoBanner({required this.text});
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: cs.secondaryContainer.withValues(alpha: 0.4),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: cs.outlineVariant),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(Icons.local_pharmacy_rounded, size: 20, color: cs.primary),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                text,
-                style: const TextStyle(fontSize: 12, height: 1.35),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 class _ProductThumb extends StatelessWidget {
-  const _ProductThumb({
-    required this.product,
-    required this.colorScheme,
-  });
+  const _ProductThumb({required this.product, required this.colorScheme});
 
   final PharmacyProduct product;
   final ColorScheme colorScheme;

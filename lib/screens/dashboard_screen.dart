@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:medicare_ai/screens/app_logs_screen.dart';
 import 'package:medicare_ai/screens/live_call_screen.dart';
 import 'package:medicare_ai/screens/login_screen.dart';
 import 'package:medicare_ai/screens/condition_reference_screen.dart';
 import 'package:medicare_ai/screens/medical_ai_chat_screen.dart';
+import 'package:medicare_ai/screens/medicine_scanner_screen.dart';
 import 'package:medicare_ai/screens/pharmacy_store_screen.dart';
 import 'package:medicare_ai/services/app_log_service.dart';
 import 'package:medicare_ai/services/care_assignment_service.dart';
@@ -15,10 +15,6 @@ import 'package:medicare_ai/widgets/emergency_dock.dart';
 import 'package:medicare_ai/widgets/incoming_call_listener.dart';
 import 'package:medicare_ai/widgets/patient_pharmacy_inbox_listener.dart';
 import 'package:medicare_ai/widgets/theme_mode_toggle.dart';
-
-const _success = Color(0xFF58B95E);
-const _danger = Color(0xFFFF4949);
-const _primary = Color(0xFF916CF2);
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({
@@ -50,53 +46,25 @@ class DashboardScreen extends StatelessWidget {
                       SliverToBoxAdapter(child: _buildHeader(context)),
                       SliverToBoxAdapter(child: _buildGreeting(context)),
                       if (patientId != null && assignedDoctor != null)
-                        SliverToBoxAdapter(child: _buildPatientIdentityCard(context)),
+                        SliverToBoxAdapter(
+                          child: _buildPatientIdentityCard(context),
+                        ),
                       SliverToBoxAdapter(child: _buildHeroCard(context)),
-                      SliverToBoxAdapter(child: _buildSectionTitle(context, 'Quick actions')),
+                      SliverToBoxAdapter(
+                        child: _buildSectionTitle(context, 'Quick actions'),
+                      ),
                       SliverPadding(
                         padding: const EdgeInsets.symmetric(horizontal: 24),
                         sliver: SliverGrid(
-                          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2,
-                            mainAxisSpacing: 14,
-                            crossAxisSpacing: 14,
-                            childAspectRatio: 1.15,
-                          ),
+                          gridDelegate:
+                              const SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: 2,
+                                mainAxisSpacing: 14,
+                                crossAxisSpacing: 14,
+                                childAspectRatio: 1.15,
+                              ),
                           delegate: SliverChildListDelegate(
                             _quickActionCards(context),
-                          ),
-                        ),
-                      ),
-                      SliverToBoxAdapter(child: _buildSectionTitle(context, 'Today')),
-                      SliverToBoxAdapter(
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 24),
-                          child: Column(
-                            children: [
-                              _TimelineTile(
-                                title: 'Vitals in range',
-                                subtitle: 'Last synced from wearable · 2h ago',
-                                leading: Icons.favorite_rounded,
-                                leadingBg: _tileLeadBg(context, 0),
-                                leadingColor: _danger,
-                              ),
-                              const SizedBox(height: 10),
-                              _TimelineTile(
-                                title: 'Follow-up: Dr. Mehta',
-                                subtitle: 'Cardiology · Tomorrow 10:30 AM',
-                                leading: Icons.event_available_rounded,
-                                leadingBg: _tileLeadBg(context, 1),
-                                leadingColor: _primary,
-                              ),
-                              const SizedBox(height: 10),
-                              _TimelineTile(
-                                title: 'Refill: Metformin 500mg',
-                                subtitle: 'Pharmacy ready for pickup',
-                                leading: Icons.local_pharmacy_rounded,
-                                leadingBg: _tileLeadBg(context, 2),
-                                leadingColor: _success,
-                              ),
-                            ],
                           ),
                         ),
                       ),
@@ -122,24 +90,23 @@ class DashboardScreen extends StatelessWidget {
     final t = _actionTints(context);
     return [
       _QuickActionCard(
-        icon: Icons.calendar_month_rounded,
-        label: 'Appointments',
-        subtitle: 'Book & view visits',
+        icon: Icons.document_scanner_rounded,
+        label: 'Scan medicine',
+        subtitle: 'Camera label check',
         tint: t[0],
-        onTap: () => _comingSoon(context),
-      ),
-      _QuickActionCard(
-        icon: Icons.folder_open_rounded,
-        label: 'Health records',
-        subtitle: 'Prescriptions & labs',
-        tint: t[1],
-        onTap: () => _comingSoon(context),
+        onTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (context) => const MedicineScannerScreen(),
+            ),
+          );
+        },
       ),
       _QuickActionCard(
         icon: Icons.psychology_rounded,
         label: 'AI health coach',
         subtitle: 'Guidance & triage',
-        tint: t[2],
+        tint: t[1],
         onTap: () {
           Navigator.of(context).push(
             MaterialPageRoute<void>(
@@ -152,7 +119,7 @@ class DashboardScreen extends StatelessWidget {
         icon: Icons.medication_liquid_rounded,
         label: 'Medication',
         subtitle: 'Condition reference (education)',
-        tint: t[3],
+        tint: t[2],
         onTap: () {
           Navigator.of(context).push(
             MaterialPageRoute<void>(
@@ -164,8 +131,8 @@ class DashboardScreen extends StatelessWidget {
       _QuickActionCard(
         icon: Icons.local_pharmacy_rounded,
         label: 'Pharmacy',
-        subtitle: 'Browse from catalog (CSV)',
-        tint: t[0],
+        subtitle: 'Browse medicines and cart',
+        tint: t[3],
         onTap: () {
           Navigator.of(context).push(
             MaterialPageRoute<void>(
@@ -195,29 +162,6 @@ class DashboardScreen extends StatelessWidget {
     ];
   }
 
-  static Color _tileLeadBg(BuildContext context, int index) {
-    final dark = Theme.of(context).brightness == Brightness.dark;
-    if (dark) {
-      const darkTints = [
-        Color(0xFF2A1E20),
-        Color(0xFF25203A),
-        Color(0xFF1A261E),
-      ];
-      return darkTints[index % 3];
-    }
-    return const [Color(0xFFFFE5E5), Color(0xFFEDE7FF), Color(0xFFE3F2E6)][index % 3];
-  }
-
-  static void _comingSoon(BuildContext context) {
-    final px = context.portalX;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('This section will connect to your care workflow soon.'),
-        backgroundColor: px.dock,
-      ),
-    );
-  }
-
   Widget _buildHeader(BuildContext context) {
     final cs = context.medicareColorScheme;
     return Padding(
@@ -238,7 +182,7 @@ class DashboardScreen extends StatelessWidget {
                       BoxShadow(
                         color: cs.shadow.withValues(alpha: 0.1),
                         blurRadius: 10,
-                      )
+                      ),
                     ],
                   ),
                   child: Image.asset('assets/logo.png', fit: BoxFit.contain),
@@ -287,25 +231,6 @@ class DashboardScreen extends StatelessWidget {
                   (route) => false,
                 );
               }),
-              const SizedBox(width: 8),
-              _circleIconButton(context, Icons.help_outline, () => _comingSoon(context)),
-              const SizedBox(width: 8),
-              _circleIconButton(context, Icons.receipt_long_rounded, () {
-                Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => const AppLogsScreen(),
-                  ),
-                );
-              }),
-              const SizedBox(width: 8),
-              _circleIconButton(context, Icons.notifications_outlined, () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: const Text('You have 2 new care reminders.'),
-                    backgroundColor: context.portalX.dock,
-                  ),
-                );
-              }),
             ],
           ),
         ],
@@ -314,7 +239,10 @@ class DashboardScreen extends StatelessWidget {
   }
 
   Widget _circleIconButton(
-      BuildContext context, IconData icon, VoidCallback onTap) {
+    BuildContext context,
+    IconData icon,
+    VoidCallback onTap,
+  ) {
     final cs = context.medicareColorScheme;
     return Material(
       color: cs.surface,
@@ -337,8 +265,8 @@ class DashboardScreen extends StatelessWidget {
     final salute = hour < 12
         ? 'Good morning'
         : hour < 17
-            ? 'Good afternoon'
-            : 'Good evening';
+        ? 'Good afternoon'
+        : 'Good evening';
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 28, 24, 20),
@@ -365,7 +293,7 @@ class DashboardScreen extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'Monitor priorities, act fast in emergencies, and keep your health data organized in one place.',
+            'Access your doctor, pharmacy cart, medication reference, and AI health coach from one place.',
             style: TextStyle(
               fontSize: 15,
               color: cs.onSurfaceVariant,
@@ -406,13 +334,16 @@ class DashboardScreen extends StatelessWidget {
             Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.22),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: const Text(
-                    'Wellness index',
+                    'Care hub',
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 12,
@@ -428,8 +359,8 @@ class DashboardScreen extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 16),
-            const Text(
-              'Stable',
+            Text(
+              assignedDoctor == null ? 'Get started' : 'Connected care',
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 28,
@@ -439,22 +370,14 @@ class DashboardScreen extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             Text(
-              'Based on your last check-in, vitals, and reported symptoms.',
+              assignedDoctor == null
+                  ? 'Choose your doctor and keep your health tools close.'
+                  : 'Assigned to $assignedDoctor. Use the actions below for care support.',
               style: TextStyle(
                 color: Colors.white.withValues(alpha: 0.88),
                 fontSize: 14,
                 height: 1.4,
               ),
-            ),
-            const SizedBox(height: 18),
-            Row(
-              children: [
-                _heroStat('98%', 'Adherence', Colors.white),
-                const SizedBox(width: 20),
-                _heroStat('Low', 'Risk flags', Colors.white),
-                const SizedBox(width: 20),
-                _heroStat('2', 'Reminders', Colors.white),
-              ],
             ),
             const SizedBox(height: 18),
             SizedBox(
@@ -468,9 +391,15 @@ class DashboardScreen extends StatelessWidget {
                     borderRadius: BorderRadius.circular(16),
                   ),
                 ),
-                onPressed: () => _comingSoon(context),
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (context) => const PharmacyStoreScreen(),
+                    ),
+                  );
+                },
                 child: const Text(
-                  'View care plan',
+                  'Open pharmacy',
                   style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
                 ),
               ),
@@ -490,14 +419,15 @@ class DashboardScreen extends StatelessWidget {
         decoration: BoxDecoration(
           color: const Color(0xFFEFFFF4),
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(
-            color: const Color(0xFF78C593),
-            width: 1.2,
-          ),
+          border: Border.all(color: const Color(0xFF78C593), width: 1.2),
         ),
         child: Row(
           children: [
-            const Icon(Icons.verified_user_rounded, color: Color(0xFF1D7F45), size: 24),
+            const Icon(
+              Icons.verified_user_rounded,
+              color: Color(0xFF1D7F45),
+              size: 24,
+            ),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -527,16 +457,6 @@ class DashboardScreen extends StatelessWidget {
                     label: const Text('Call assigned doctor in app'),
                   ),
                   const SizedBox(height: 8),
-                  Tooltip(
-                    message:
-                        'Verifies the cloud token endpoint; does not start a call or notify anyone.',
-                    child: OutlinedButton.icon(
-                      onPressed: () => _testCallBackend(context),
-                      icon: const Icon(Icons.health_and_safety_rounded),
-                      label: const Text('Test LiveKit token (API only)'),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
                   OutlinedButton.icon(
                     onPressed: () => _chooseDoctorFromDashboard(context),
                     icon: const Icon(Icons.local_hospital_rounded),
@@ -559,7 +479,9 @@ class DashboardScreen extends StatelessWidget {
     );
     if (!allowed) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Only your assigned doctor can be called.')),
+        const SnackBar(
+          content: Text('Only your assigned doctor can be called.'),
+        ),
       );
       return;
     }
@@ -568,10 +490,13 @@ class DashboardScreen extends StatelessWidget {
       doctorId: assignedDoctorId!,
     );
     final myUid = FirebaseAuth.instance.currentUser?.uid ?? '';
-    final doctorUid = CareAssignmentService.instance.doctorUidById(assignedDoctorId!) ?? '';
+    final doctorUid =
+        CareAssignmentService.instance.doctorUidById(assignedDoctorId!) ?? '';
     if (myUid.isEmpty || doctorUid.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Call mapping not ready yet. Please re-login.')),
+        const SnackBar(
+          content: Text('Call mapping not ready yet. Please re-login.'),
+        ),
       );
       return;
     }
@@ -587,49 +512,6 @@ class DashboardScreen extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  Future<void> _testCallBackend(BuildContext context) async {
-    if (patientId == null || assignedDoctorId == null) return;
-    final myUid = FirebaseAuth.instance.currentUser?.uid ?? '';
-    if (myUid.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please re-login and try again.')),
-      );
-      return;
-    }
-    final roomName = LiveKitCallService.buildRoomName(
-      patientId: patientId!,
-      doctorId: assignedDoctorId!,
-    );
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Checking token service...')),
-    );
-    try {
-      final creds = await LiveKitCallService.fetchJoinCredentials(
-        roomName: roomName,
-        identity: myUid,
-        participantName: 'Patient ${patientId!}',
-      );
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'PASS: token issued for room $roomName\n'
-            'Server: ${creds['serverUrl']}\n\n'
-            'This only checks the API — it does not open WebSockets or notify '
-            'anyone. If a real call shows "invalid API key", the LIVEKIT_* '
-            'Function secrets are wrong or mixed from different projects.',
-          ),
-        ),
-      );
-    } catch (e) {
-      AppLogService.instance.error('Patient token service test failed', e);
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('FAIL: $e')),
-      );
-    }
   }
 
   Future<void> _chooseDoctorFromDashboard(BuildContext context) async {
@@ -651,11 +533,12 @@ class DashboardScreen extends StatelessWidget {
       return;
     }
     try {
-      final updated = await CareAssignmentService.instance.reassignPatientToDoctor(
-        patientUid: patientUid,
-        patientId: patientId!,
-        doctorId: chosen.id,
-      );
+      final updated = await CareAssignmentService.instance
+          .reassignPatientToDoctor(
+            patientUid: patientUid,
+            patientId: patientId!,
+            doctorId: chosen.id,
+          );
       if (!context.mounted) return;
       Navigator.of(context).pushReplacement(
         MaterialPageRoute<void>(
@@ -669,37 +552,10 @@ class DashboardScreen extends StatelessWidget {
     } catch (e) {
       AppLogService.instance.error('Failed to change assigned doctor', e);
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not change doctor: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Could not change doctor: $e')));
     }
-  }
-
-  Widget _heroStat(String value, String label, Color textColor) {
-    return Expanded(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            value,
-            style: TextStyle(
-              color: textColor,
-              fontSize: 20,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            label,
-            style: TextStyle(
-              color: textColor.withValues(alpha: 0.85),
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
-    );
   }
 
   Widget _buildSectionTitle(BuildContext context, String text) {
@@ -784,83 +640,6 @@ class _QuickActionCard extends StatelessWidget {
   }
 }
 
-class _TimelineTile extends StatelessWidget {
-  const _TimelineTile({
-    required this.title,
-    required this.subtitle,
-    required this.leading,
-    required this.leadingBg,
-    required this.leadingColor,
-  });
-
-  final String title;
-  final String subtitle;
-  final IconData leading;
-  final Color leadingBg;
-  final Color leadingColor;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = context.medicareColorScheme;
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: cs.surface,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: cs.shadow.withValues(alpha: 0.07),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: leadingBg,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(leading, color: leadingColor, size: 22),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 15,
-                    color: cs.onSurface,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  subtitle,
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: cs.onSurfaceVariant,
-                    height: 1.35,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Icon(
-            Icons.chevron_right_rounded,
-            color: cs.onSurfaceVariant,
-            size: 22,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _DoctorPickerSheet extends StatelessWidget {
   const _DoctorPickerSheet({required this.doctorsFuture});
 
@@ -925,7 +704,8 @@ class _DoctorPickerSheet extends StatelessWidget {
                   child: ListView.separated(
                     shrinkWrap: true,
                     itemCount: doctors.length,
-                    separatorBuilder: (context, index) => const SizedBox(height: 8),
+                    separatorBuilder: (context, index) =>
+                        const SizedBox(height: 8),
                     itemBuilder: (context, index) {
                       final doctor = doctors[index];
                       return ListTile(
@@ -934,11 +714,15 @@ class _DoctorPickerSheet extends StatelessWidget {
                         ),
                         tileColor: cs.surfaceContainerHighest,
                         leading: CircleAvatar(
-                          backgroundColor: doctor.avatarColor.withValues(alpha: 0.2),
+                          backgroundColor: doctor.avatarColor.withValues(
+                            alpha: 0.2,
+                          ),
                           child: Icon(Icons.person, color: doctor.avatarColor),
                         ),
                         title: Text(doctor.name),
-                        subtitle: Text('${doctor.id} • ${doctor.specialization}'),
+                        subtitle: Text(
+                          '${doctor.id} • ${doctor.specialization}',
+                        ),
                         onTap: () => Navigator.of(context).pop(doctor),
                       );
                     },

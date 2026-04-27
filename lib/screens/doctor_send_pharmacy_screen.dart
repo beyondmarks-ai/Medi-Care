@@ -356,7 +356,7 @@ class _DoctorSendPharmacyScreenState extends State<DoctorSendPharmacyScreen> {
         : CareAssignmentService.instance.patientsForDoctor(doc.id);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Send to patient pharmacy'),
+        title: const Text('Create prescription'),
         actions: [
           IconButton(
             tooltip: 'Open full U.S. FDA label search',
@@ -392,15 +392,6 @@ class _DoctorSendPharmacyScreenState extends State<DoctorSendPharmacyScreen> {
                   children: [
                     Padding(
                       padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
-                      child: _DisclaimerBanner(
-                        text: _source == 0
-                            ? 'Items from this app’s catalog are the same as in the patient Pharmacy store. This is a workflow aid, not a prescription or medical order.'
-                            : 'openFDA is U.S. public label text (reference only). Contraindications and warnings are shown when present; always use local labeling and your clinical judgment.',
-                        colorScheme: cs,
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
@@ -420,12 +411,12 @@ class _DoctorSendPharmacyScreenState extends State<DoctorSendPharmacyScreen> {
                             ],
                             onChanged: (v) => setState(() => _patient = v),
                           ),
-                          const SizedBox(height: 4),
+                          const SizedBox(height: 10),
                           SegmentedButton<int>(
                             segments: const [
                               ButtonSegment(
                                 value: 0,
-                                label: Text('App catalog'),
+                                label: Text('Medicine catalog'),
                                 icon: Icon(
                                   Icons.medication_liquid_outlined,
                                   size: 18,
@@ -433,7 +424,7 @@ class _DoctorSendPharmacyScreenState extends State<DoctorSendPharmacyScreen> {
                               ),
                               ButtonSegment(
                                 value: 1,
-                                label: Text('U.S. FDA'),
+                                label: Text('FDA reference'),
                                 icon: Icon(Icons.gavel_outlined, size: 18),
                               ),
                             ],
@@ -493,7 +484,7 @@ class _DoctorSendPharmacyScreenState extends State<DoctorSendPharmacyScreen> {
                                   children: [
                                     TextField(
                                       decoration: const InputDecoration(
-                                        labelText: 'Search in-app catalog',
+                                        labelText: 'Search medicine catalog',
                                         prefixIcon: Icon(Icons.search),
                                         border: OutlineInputBorder(),
                                         hintText: 'Name or composition',
@@ -638,7 +629,7 @@ class _DoctorSendPharmacyScreenState extends State<DoctorSendPharmacyScreen> {
                                 if (_qFda.trim().length < 2) ...[
                                   const SizedBox(height: 8),
                                   Text(
-                                    'Type at least 2 characters to search U.S. product labels. Turn on checkboxes for every product to send; you can select many. Review uses and who should not take it below.',
+                                    'Search FDA label text for reference. Check medicines to add them to the prescription draft.',
                                     style: TextStyle(
                                       color: cs.onSurfaceVariant,
                                       height: 1.35,
@@ -823,35 +814,6 @@ class _DoctorSendPharmacyScreenState extends State<DoctorSendPharmacyScreen> {
                 );
               },
             ),
-    );
-  }
-}
-
-class _DisclaimerBanner extends StatelessWidget {
-  const _DisclaimerBanner({required this.text, required this.colorScheme});
-
-  final String text;
-  final ColorScheme colorScheme;
-
-  @override
-  Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: colorScheme.outlineVariant),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Text(
-          text,
-          style: TextStyle(
-            fontSize: 12,
-            height: 1.35,
-            color: colorScheme.onSurfaceVariant,
-          ),
-        ),
-      ),
     );
   }
 }
